@@ -2,7 +2,7 @@
 
 This repository has two complete implementations of the same API stack:
 - Full fledged API project --> https://github.com/niketchandra/api-gateway-testing/tree/Laravel-CircuitBreaker  (Primary)
-- 
+
 ## Big Picture
 
 ```mermaid
