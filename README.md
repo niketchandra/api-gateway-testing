@@ -35,6 +35,19 @@ flowchart LR
   kong --> api
 ```
 
+### Redis read flow (cache-aside)
+```mermaid
+flowchart LR
+  client[Client] --> kong[Kong Gateway]
+  kong --> api[API]
+  api -->|read| redis[(Redis)]
+  redis -->|hit| api
+  redis -->|miss| api
+  api -->|fallback| db[(MySQL)]
+  api -->|write-through| redis
+  api --> client
+```
+
 ## Why JWT helps
 - Stateless authentication: the API verifies the token signature without server-side sessions.
 - Scales easily behind Kong because any API instance can validate the same token.
@@ -69,6 +82,18 @@ The FastAPI and Laravel branches implement the same core APIs so Kong can route 
 
 ## Redis (future)
 See [redis.md](redis.md) for how to add Redis caching and session/token support in both branches.
+
+### Redis container in this branch
+This reference branch includes a Redis container and config:
+- Redis Dockerfile: redis/Dockerfile
+- Redis config: redis/redis.conf
+- Compose service: redis (port 6379)
+
+API environment variables (examples):
+- REDIS_HOST=redis
+- REDIS_PORT=6379
+
+Redis will not cache anything by itself. The API must implement cache reads/writes.
 
 ## Developer workflow (new API)
 1. Create your API (models, controllers, routes, migrations) in the chosen branch.

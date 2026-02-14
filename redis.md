@@ -110,3 +110,168 @@ flowchart LR
 5. On updates/deletes, invalidate relevant keys.
 
 This keeps hot data fast and reduces database load while keeping data consistent.
+
+## Detailed examples (code to add)
+Below are concrete examples for read APIs. These are meant to be applied in each branch.
+
+### User read (FastAPI branch)
+Files to update:
+- src/app/db.py (add Redis client)
+- src/app/crud.py (wrap reads)
+
+Add Redis client in src/app/db.py:
+
+```python
+import os
+import redis
+
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+```
+
+Update read in src/app/crud.py:
+
+```python
+from .db import redis_client
+
+def get_user(db: Session, user_id: int) -> models.User | None:
+  cache_key = f"user:{user_id}"
+  cached = redis_client.get(cache_key)
+  if cached:
+    return models.User(**json.loads(cached))
+
+  user = db.query(models.User).filter(models.User.id == user_id).first()
+  if user:
+    redis_client.setex(cache_key, 60, json.dumps({
+      "id": user.id,
+      "name": user.name,
+      "email": user.email,
+      "created_at": user.created_at.isoformat(),
+      "updated_at": user.updated_at.isoformat(),
+    }))
+  return user
+```
+
+Invalidate on update/delete in src/app/crud.py:
+
+```python
+redis_client.delete(f"user:{user.id}")
+```
+
+### User read (Laravel branch)
+Files to update:
+- composer/app/Http/Controllers/Api/UserController.php
+- composer/.env (set CACHE_DRIVER=redis)
+
+In UserController.php:
+
+```php
+use Illuminate\Support\Facades\Cache;
+
+public function show(User $user)
+{
+  return Cache::remember("user:" . $user->id, 60, function () use ($user) {
+    return $user->fresh();
+  });
+}
+```
+
+Invalidate on update/delete:
+
+```php
+Cache::forget("user:" . $user->id);
+```
+
+### Product read (FastAPI branch)
+Files to update:
+- src/app/crud.py
+
+```python
+def get_product(db: Session, product_id: int) -> models.Product | None:
+  cache_key = f"product:{product_id}"
+  cached = redis_client.get(cache_key)
+  if cached:
+    return models.Product(**json.loads(cached))
+
+  product = db.query(models.Product).filter(models.Product.id == product_id).first()
+  if product:
+    redis_client.setex(cache_key, 60, json.dumps({
+      "id": product.id,
+      "name": product.name,
+      "sku": product.sku,
+      "price_cents": product.price_cents,
+    }))
+  return product
+```
+
+Invalidate on update/delete:
+
+```python
+redis_client.delete(f"product:{product.id}")
+```
+
+### Product read (Laravel branch)
+Files to update:
+- composer/app/Http/Controllers/Api/ProductController.php
+
+```php
+use Illuminate\Support\Facades\Cache;
+
+public function show(Product $product)
+{
+  return Cache::remember("product:" . $product->id, 60, function () use ($product) {
+    return $product->fresh();
+  });
+}
+```
+
+Invalidate on update/delete:
+
+```php
+Cache::forget("product:" . $product->id);
+```
+
+### File read (FastAPI branch)
+Files to update:
+- src/app/main.py (download endpoint)
+
+```python
+cache_key = f"file:{file_id}"
+cached_path = redis_client.get(cache_key)
+if cached_path:
+  return FileResponse(cached_path)
+
+# After locating file path on disk:
+redis_client.setex(cache_key, 3600, file_path)
+```
+
+### File read (Laravel branch)
+Files to update:
+- composer/app/Http/Controllers/Api/FileController.php
+
+```php
+use Illuminate\Support\Facades\Cache;
+
+$cacheKey = "file:" . $fileId;
+$path = Cache::get($cacheKey);
+if ($path && Storage::disk('local')->exists($path)) {
+  return Storage::disk('local')->download($path);
+}
+
+// After resolving the file:
+Cache::put($cacheKey, $match, 3600);
+```
+
+## Redis configuration checklist
+- Docker: ensure redis service is running and exposed on port 6379.
+- API env vars:
+  - REDIS_HOST=redis
+  - REDIS_PORT=6379
+- Laravel .env:
+  - CACHE_DRIVER=redis
+  - SESSION_DRIVER=redis (optional)
+  - QUEUE_CONNECTION=redis (optional)
+- FastAPI requirements:
+  - redis

@@ -17,11 +17,20 @@ services:
     environment:
       DATABASE_URL: mysql+pymysql://root@mysql:3306/users_db
       SECRET_KEY: change-me
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8000:8000"
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  redis:
+    build: ./redis
+    ports:
+      - "6379:6379"
 
   phpmyadmin:
     image: phpmyadmin:5.2
