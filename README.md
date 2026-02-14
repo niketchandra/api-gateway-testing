@@ -90,6 +90,24 @@ flowchart LR
 docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d
 ```
 
+2. Build containers when code changes:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d --build
+```
+
+3. Run migrations:
+
+```bash
+docker compose exec api php artisan migrate --force
+```
+
+4. Restart Kong after any kong/kong.yml change:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-kong.yml restart kong
+```
+
 2. Services:
 - **api**: Laravel application
 - **mysql**: MySQL 8.0 database
@@ -192,7 +210,15 @@ curl -X DELETE http://localhost:8002/products/1
 ```
 
 ## Login and logout (via Kong)
-Login:
+Register:
+
+```bash
+curl -X POST http://localhost:8002/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"User001\",\"email\":\"user001@example.com\",\"password\":\"Secret123!\",\"password_confirmation\":\"Secret123!\"}"
+```
+
+Login (returns a temporary session token):
 
 ```bash
 curl -X POST http://localhost:8002/auth/login \
@@ -200,7 +226,7 @@ curl -X POST http://localhost:8002/auth/login \
   -d "{\"email\":\"user001@example.com\",\"password\":\"Secret123!\"}"
 ```
 
-Retrieve token from login response:
+Retrieve session token from login response:
 
 ```bash
 curl -s -X POST http://localhost:8002/auth/login \
@@ -208,7 +234,21 @@ curl -s -X POST http://localhost:8002/auth/login \
   -d "{\"email\":\"user001@example.com\",\"password\":\"Secret123!\"}" | python -c "import sys, json; print(json.load(sys.stdin)['access_token'])"
 ```
 
-Logout:
+Create PAT token (permanent, format atgla-xxxxxxxxxxxxxxxxxxx):
+
+```bash
+curl -X POST "http://localhost:8002/auth/pat-tokens?name=my_pat_1&expires_at=2099-12-31" \
+  -H "Authorization: Bearer <session_token>"
+```
+
+View all PAT tokens for the current user:
+
+```bash
+curl -X GET http://localhost:8002/auth/pat-tokens \
+  -H "Authorization: Bearer <session_token>"
+```
+
+Logout (invalidates the session token):
 
 ```bash
 curl -X POST http://localhost:8002/auth/logout \
@@ -216,17 +256,30 @@ curl -X POST http://localhost:8002/auth/logout \
 ```
 
 ## File upload and download (via Kong)
-Upload:
+Upload (requires PAT token):
 
 ```bash
 curl -X POST http://localhost:8002/files/upload \
-  -F "file=@./path/to/your/file.txt"
+  -H "Authorization: Bearer <pat_token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"file_name\":\"sample.txt\",\"file_data\":\"<raw-or-base64>\"}"
 ```
 
-Download (use file_id from upload response):
+Download (requires PAT token, use file id from upload response):
 
 ```bash
-curl -O http://localhost:8002/files/<file_id>
+curl -X GET http://localhost:8002/files/<file_id> \
+  -H "Authorization: Bearer <pat_token>"
+```
+
+## Auth flow diagram (Session + PAT)
+
+```mermaid
+flowchart LR
+  A[add_user] --> B[login]
+  B --> C[Using Session Create PAT]
+  C --> D[view all PAT]
+  D --> E[Logout]
 ```
 
 ## Laravel migrations
