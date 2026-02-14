@@ -1,15 +1,13 @@
-# FastAPI User CRUD with MySQL and Kong
+# Laravel User CRUD with MySQL and Kong
 
-This project provides a complete CRUD API for a User resource using FastAPI and MySQL, exposed through Kong API Gateway.
+This project provides a complete CRUD API for a User resource using Laravel and MySQL, exposed through Kong API Gateway.
 
 ## Docs
-- FastAPI design and code tour: [FASTAPI.md](FASTAPI.md)
+- Laravel API details: [LARAVEL.md](LARAVEL.md)
 - Kong config and routing: [KONG.md](KONG.md)
-- Alembic migrations: [ALEMBIC.md](ALEMBIC.md)
 
 ## Docker Compose (API + MySQL + Kong)
-1. Ensure SECRET_KEY is set in docker-compose.yml (replace "change-me").
-2. Start everything:
+1. Start everything:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d
@@ -20,6 +18,8 @@ docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d
 - Kong proxy: http://localhost:8002
 - Kong admin: http://localhost:8001
 - phpMyAdmin: http://localhost:8080 (user root, password empty)
+
+The Laravel application lives in composer/ and is served by the api container.
 
 ## Kong API description
 Kong runs in DB-less mode and loads kong/kong.yml at startup. The config defines:
@@ -70,6 +70,41 @@ Delete user:
 curl -X DELETE http://localhost:8002/users/1
 ```
 
+## Products CRUD (via Kong)
+Create product:
+
+```bash
+curl -X POST http://localhost:8002/products \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Widget\",\"sku\":\"WID-001\",\"price_cents\":1200}"
+```
+
+List products:
+
+```bash
+curl http://localhost:8002/products
+```
+
+Get product:
+
+```bash
+curl http://localhost:8002/products/1
+```
+
+Update product:
+
+```bash
+curl -X PUT http://localhost:8002/products/1 \
+  -H "Content-Type: application/json" \
+  -d "{\"price_cents\":1500}"
+```
+
+Delete product:
+
+```bash
+curl -X DELETE http://localhost:8002/products/1
+```
+
 ## Login and logout (via Kong)
 Login:
 
@@ -94,19 +129,29 @@ curl -X POST http://localhost:8002/auth/logout \
   -H "Authorization: Bearer <token>"
 ```
 
-## Alembic
-- The latest migration adds the password_hash column.
-- Apply migrations in the container when the DB already exists:
+## File upload and download (via Kong)
+Upload:
 
 ```bash
-docker compose run --rm api alembic upgrade head
+curl -X POST http://localhost:8002/files/upload \
+  -F "file=@./path/to/your/file.txt"
 ```
 
-Details: [ALEMBIC.md](ALEMBIC.md)
+Download (use file_id from upload response):
+
+```bash
+curl -O http://localhost:8002/files/<file_id>
+```
+
+## Laravel migrations
+Run migrations inside the api container:
+
+```bash
+docker compose exec api php artisan migrate --force
+```
 
 ## Troubleshooting
 - Kong says "no Route matched": restart Kong after editing kong/kong.yml.
   - docker compose -f docker-compose.yml -f docker-compose-kong.yml restart kong
 - 500 error for "Unknown column users.password_hash": run the migration.
-- bcrypt backend errors: rebuild the api image after requirements.txt changes.
 - Docker network not found: bring stack down and up again.

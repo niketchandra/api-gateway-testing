@@ -15,8 +15,15 @@ services:
   api:
     build: .
     environment:
-      DATABASE_URL: mysql+pymysql://root@mysql:3306/users_db
-      SECRET_KEY: change-me
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: users_db
+      DB_USERNAME: root
+      DB_PASSWORD: ""
     ports:
       - "8000:8000"
     depends_on:

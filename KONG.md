@@ -9,14 +9,19 @@ This project runs Kong in DB-less mode and loads kong/kong.yml at startup.
 
 ## kong/kong.yml structure
 - services:
-  - users-service: proxies to http://api:8000
+  - users-service: proxies to http://api:8000 (Laravel app in composer/)
     - routes:
       - /users (GET, POST, PUT, DELETE)
+      - /products (GET, POST, PUT, DELETE)
     - plugin: rate-limiting (minute: 4)
   - auth-service: proxies to http://api:8000
     - routes:
       - /auth/login (POST)
       - /auth/logout (POST)
+  - files-service: proxies to http://api:8000
+    - routes:
+      - /files/upload (POST)
+      - /files (GET)
 
 ## Adding new routes (examples)
 Below are examples for adding product APIs and file upload/download APIs to kong/kong.yml.
@@ -62,6 +67,25 @@ Add these routes so Kong forwards file traffic to the API:
 Notes:
 - For downloads, /files is a prefix path that matches /files/{file_id}.
 - After editing kong/kong.yml, restart Kong to load changes.
+
+## How to add a new API (developer workflow)
+1. Create the Laravel API (controller, model, migration, routes) in composer/:
+  - Model: composer/app/Models
+  - Controller: composer/app/Http/Controllers/Api
+  - Routes: composer/routes/api.php
+  - Migration: composer/database/migrations
+2. Run migrations:
+
+```bash
+docker compose exec api php artisan migrate --force
+```
+
+3. Expose the new route in kong/kong.yml under an existing service or a new service.
+4. Restart Kong to load changes:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-kong.yml restart kong
+```
 
 ## Reloading config
 Kong does not auto-reload this file. After edits, restart the container:
