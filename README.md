@@ -3,6 +3,7 @@
 This repository has two complete implementations of the same API stack:
 - FastAPI + Kong: https://github.com/niketchandra/api-gateway-testing/tree/FastAPI-with-Kong
 - Laravel + Kong: https://github.com/niketchandra/api-gateway-testing/tree/Laravel-with-Kong
+- Redis Integration (In future): https://github.com/niketchandra/api-gateway-testing/tree/Redis-Integration
 
 Each branch contains a full Docker setup with MySQL, phpMyAdmin, and Kong in DB-less mode.
 
