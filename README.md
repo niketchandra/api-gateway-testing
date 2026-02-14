@@ -67,6 +67,9 @@ The FastAPI and Laravel branches implement the same core APIs so Kong can route 
 - Products CRUD (if enabled): /products (GET, POST, PUT, DELETE) and /products/{id}
 - Files (if enabled): /files/upload (POST), /files/{fileId} (GET)
 
+## Redis (future)
+See [redis.md](redis.md) for how to add Redis caching and session/token support in both branches.
+
 ## Developer workflow (new API)
 1. Create your API (models, controllers, routes, migrations) in the chosen branch.
 2. Run migrations in the API container.
