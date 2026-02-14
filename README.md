@@ -2,9 +2,16 @@
 
 This project provides a complete CRUD API for a User resource using Laravel and MySQL, exposed through Kong API Gateway.
 
+## Repository Branches
+- [FastAPI-with-Kong](https://github.com/niketchandra/api-gateway-testing/tree/FastAPI-with-Kong) - FastAPI implementation
+- [Laravel-with-Kong](https://github.com/niketchandra/api-gateway-testing/tree/Laravel-with-Kong) - Laravel implementation
+- [Redis-Integration](https://github.com/niketchandra/api-gateway-testing/tree/Redis-Integration) - Redis caching layer integration
+
 ## Docs
 - Laravel API details: [LARAVEL.md](LARAVEL.md)
 - Kong config and routing: [KONG.md](KONG.md)
+- Redis integration: [redis.md](redis.md)
+- Resilience patterns (Circuit Breakers & Queues): [resilience.md](resilience.md)
 
 ## Docker Compose (API + MySQL + Kong)
 1. Start everything:
