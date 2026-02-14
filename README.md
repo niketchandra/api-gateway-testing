@@ -1,9 +1,31 @@
 # API Gateway Testing (FastAPI + Kong, Laravel + Kong)
 
 This repository has two complete implementations of the same API stack:
+- Full fledged API project --> https://github.com/niketchandra/api-gateway-testing/tree/Laravel-CircuitBreaker  (Primary)
+
+## Big Picture
+
+```mermaid
+flowchart LR
+  A[Client] --> B[Kong :8002]
+  B --> C[Laravel API :8000]
+  C --> D{Circuit Breaker}
+  D -->|open| E[503 for reads]
+  D -->|open| F[202 + queue write]
+  F --> G[Redis]
+  G --> H[Queue Worker]
+  H --> I[MySQL]
+  D -->|closed| I[MySQL]
+  I --> J[Response]
+```
+
+## Base Learning
+
 - FastAPI + Kong: https://github.com/niketchandra/api-gateway-testing/tree/FastAPI-with-Kong
 - Laravel + Kong: https://github.com/niketchandra/api-gateway-testing/tree/Laravel-with-Kong
 - Redis Integration (In future): https://github.com/niketchandra/api-gateway-testing/tree/Redis-Integration
+
+
 
 Each branch contains a full Docker setup with MySQL, phpMyAdmin, and Kong in DB-less mode.
 
