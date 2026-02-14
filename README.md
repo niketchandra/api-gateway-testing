@@ -26,11 +26,46 @@ This project implements production-ready resilience patterns:
 See [IMPLEMENTATION.md](IMPLEMENTATION.md) for complete guide and testing instructions.
 
 ## Docs
+- Main README: [README.md](README.md)
+- Implementation Guide (Circuit Breaker + Queue): [IMPLEMENTATION.md](IMPLEMENTATION.md)
 - Laravel API details: [LARAVEL.md](LARAVEL.md)
 - Kong config and routing: [KONG.md](KONG.md)
-- Redis integration: [redis.md](redis.md)
 - Resilience patterns (Circuit Breakers & Queues): [resilience.md](resilience.md)
-- **Implementation Guide (Circuit Breaker + Queue)**: [IMPLEMENTATION.md](IMPLEMENTATION.md)
+- Circuit breaker details: [CircuitBreak.md](CircuitBreak.md)
+- Queue system details: [QUEUE.md](QUEUE.md)
+- Scenario notes: [scenerio.md](scenerio.md)
+- Composer app README: [composer/README.md](composer/README.md)
+- Copilot instructions: [.github/copilot-instructions.md](.github/copilot-instructions.md)
+
+## End-to-end workflow (Laravel + Kong + MySQL + Redis + Circuit Breaker)
+High-level flow for a typical request:
+
+1. Client calls Kong (proxy port 8002).
+2. Kong routes the request to the Laravel API service.
+3. Laravel checks the circuit breaker state.
+4. If breaker is closed, Laravel runs the DB call.
+5. If the DB call fails, the breaker records failures and may open.
+6. If breaker is open:
+   - Reads return 503 with `circuit_state`.
+   - Writes are queued in Redis and return 202.
+7. Queue worker retries writes with backoff until MySQL is back.
+8. On recovery, queued jobs succeed and the breaker closes after successful calls.
+
+Workflow diagram:
+
+```
+Client
+  |
+  v
+Kong (8002) -> Laravel API (8000) -> Circuit Breaker
+                                     |          |
+                                     |          +-- open --> 503 (read) / 202 + Redis queue (write)
+                                     |
+                                     +-- closed --> MySQL
+                                                       |
+                                                       +-- success -> response
+                                                       +-- failure -> breaker counts failure
+```
 
 ## Docker Compose (API + MySQL + Redis + Kong + Queue Worker)
 1. Start everything:

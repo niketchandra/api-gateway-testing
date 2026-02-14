@@ -36,6 +36,21 @@ In `DatabaseCircuitBreaker`, `query()` first runs `SELECT 1`. If that fails, the
 7. Two successful calls close the breaker.
 8. Queue retries writes until they succeed or exhaust retries.
 
+## Workflow (request flow)
+```
+Client
+  |
+  v
+Controller -> Breaker state check
+  |                |
+  |                +-- open --> 503 (read) / 202 + queue (write)
+  |
+  +-- closed --> DatabaseCircuitBreaker::query()
+              |
+              +-- success --> 2 successes close breaker
+              +-- failure --> record failure -> open if threshold
+```
+
 ## Using the same scenario for file uploads
 You can apply the same pattern to file uploads (e.g., when storage or DB is unavailable):
 
