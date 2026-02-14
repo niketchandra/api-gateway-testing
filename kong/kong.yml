@@ -42,6 +42,12 @@ services:
         strip_path: false
         methods:
           - POST
+      - name: auth-pat-tokens-route
+        paths:
+          - /auth/pat-tokens
+        strip_path: false
+        methods:
+          - POST
   - name: files-service
     url: http://api:8000
     routes:

@@ -5,6 +5,8 @@ return [
 
     'guard' => ['web'],
 
+    'personal_access_token_model' => App\Models\PatToken::class,
+
     'expiration' => null,
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
