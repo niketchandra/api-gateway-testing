@@ -34,6 +34,8 @@ See [IMPLEMENTATION.md](IMPLEMENTATION.md) for complete guide and testing instru
 - Circuit breaker details: [CircuitBreak.md](CircuitBreak.md)
 - Queue system details: [QUEUE.md](QUEUE.md)
 - Scenario notes: [scenerio.md](scenerio.md)
+- Redis branch: https://github.com/niketchandra/api-gateway-testing/tree/Redis-Integration
+- Redis docs (branch): https://github.com/niketchandra/api-gateway-testing/blob/Redis-Integration/redis.md
 - Composer app README: [composer/README.md](composer/README.md)
 - Copilot instructions: [.github/copilot-instructions.md](.github/copilot-instructions.md)
 
