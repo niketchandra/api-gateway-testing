@@ -12,13 +12,15 @@ RUN apt-get update \
         pdo_mysql \
         mbstring \
         zip \
+    ; pecl install redis \
+    ; docker-php-ext-enable redis \
     ; apt-get clean \
     ; rm -rf /var/lib/apt/lists/*
 
 COPY composer /app
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    ; composer install --no-interaction --prefer-dist --optimize-autoloader \
+    ; composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs || composer update --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs \
     ; if [ ! -f .env ]; then cp .env.example .env; fi \
     ; php artisan key:generate --force \
     ; chmod -R 775 storage bootstrap/cache

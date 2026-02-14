@@ -7,24 +7,52 @@ This project provides a complete CRUD API for a User resource using Laravel and 
 - [Laravel-with-Kong](https://github.com/niketchandra/api-gateway-testing/tree/Laravel-with-Kong) - Laravel implementation
 - [Redis-Integration](https://github.com/niketchandra/api-gateway-testing/tree/Redis-Integration) - Redis caching layer integration
 
+## Features
+
+### ✨ Resilience & High Availability
+This project implements production-ready resilience patterns:
+
+- **Circuit Breaker**: Automatically detects database failures and prevents cascading errors
+- **Message Queue**: Buffers write operations when database is unavailable
+- **Automatic Retry**: Failed operations retry with exponential backoff (30s, 60s, 120s, 300s, 600s)
+- **Graceful Degradation**: Returns meaningful responses even when services are down
+
+**How it works:**
+1. When database fails 3 times, circuit breaker opens
+2. Write operations are queued in Redis
+3. Queue worker processes jobs when database recovers
+4. Read operations return 503 with circuit state information
+
+See [IMPLEMENTATION.md](IMPLEMENTATION.md) for complete guide and testing instructions.
+
 ## Docs
 - Laravel API details: [LARAVEL.md](LARAVEL.md)
 - Kong config and routing: [KONG.md](KONG.md)
 - Redis integration: [redis.md](redis.md)
 - Resilience patterns (Circuit Breakers & Queues): [resilience.md](resilience.md)
+- **Implementation Guide (Circuit Breaker + Queue)**: [IMPLEMENTATION.md](IMPLEMENTATION.md)
 
-## Docker Compose (API + MySQL + Kong)
+## Docker Compose (API + MySQL + Redis + Kong + Queue Worker)
 1. Start everything:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d
 ```
 
+2. Services:
+- **api**: Laravel application
+- **mysql**: MySQL 8.0 database
+- **redis**: Redis 7 for caching and queue
+- **queue-worker**: Laravel queue worker for background jobs
+- **kong**: Kong API Gateway 3.6
+- **phpmyadmin**: Database admin interface
+
 3. Endpoints:
 - API (direct): http://localhost:8000
 - Kong proxy: http://localhost:8002
 - Kong admin: http://localhost:8001
 - phpMyAdmin: http://localhost:8080 (user root, password empty)
+- Redis: localhost:6379
 
 The Laravel application lives in composer/ and is served by the api container.
 
