@@ -69,6 +69,20 @@ Kong (8002) -> Laravel API (8000) -> Circuit Breaker
                                                        +-- failure -> breaker counts failure
 ```
 
+```mermaid
+flowchart LR
+  A[Client] --> B[Kong :8002]
+  B --> C[Laravel API :8000]
+  C --> D{Circuit Breaker}
+  D -->|open| E[503 for reads]
+  D -->|open| F[202 + queue write]
+  F --> G[Redis]
+  G --> H[Queue Worker]
+  H --> I[MySQL]
+  D -->|closed| I[MySQL]
+  I --> J[Response]
+```
+
 ## Docker Compose (API + MySQL + Redis + Kong + Queue Worker)
 1. Start everything:
 
