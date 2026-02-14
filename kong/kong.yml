@@ -30,6 +30,12 @@ services:
   - name: auth-service
     url: http://api:8000
     routes:
+      - name: auth-register-route
+        paths:
+          - /auth/register
+        strip_path: false
+        methods:
+          - POST
       - name: auth-login-route
         paths:
           - /auth/login
@@ -48,6 +54,7 @@ services:
         strip_path: false
         methods:
           - POST
+          - GET
   - name: files-service
     url: http://api:8000
     routes:

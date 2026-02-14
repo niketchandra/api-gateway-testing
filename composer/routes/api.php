@@ -7,12 +7,17 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
+Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-Route::post('/auth/pat-tokens', [PatTokenController::class, 'store'])->middleware('auth:sanctum');
+Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth.session');
+
+// PAT token management - requires session token (temporary bearer token)
+Route::post('/auth/pat-tokens', [PatTokenController::class, 'store'])->middleware('auth.session');
+Route::get('/auth/pat-tokens', [PatTokenController::class, 'index'])->middleware('auth.session');
 
 Route::apiResource('users', UserController::class);
 Route::apiResource('products', ProductController::class);
 
-Route::post('/files/upload', [FileController::class, 'upload']);
-Route::get('/files/{fileId}', [FileController::class, 'download']);
+// File operations - require PAT token only (permanent token with atgla- prefix)
+Route::post('/files/upload', [FileController::class, 'upload'])->middleware('auth.pat');
+Route::get('/files/{fileId}', [FileController::class, 'download'])->middleware('auth.pat');

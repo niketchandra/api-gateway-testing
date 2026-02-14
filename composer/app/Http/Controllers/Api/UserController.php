@@ -43,6 +43,7 @@ class UserController extends Controller
         $baseRules = [
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:255'],
+            'dob' => ['required', 'date'],
             'password' => ['required', 'string', 'min:8', 'max:128'],
         ];
 
@@ -79,6 +80,8 @@ class UserController extends Controller
         $userData = [
             'name' => $data['name'],
             'email' => $data['email'],
+            'dob' => $data['dob'],
+            'dob' => $data['dob'],
             'password_hash' => Hash::make($data['password']),
         ];
 
@@ -137,6 +140,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:100'],
             'email' => ['sometimes', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'dob' => ['sometimes', 'date'],
             'password' => ['sometimes', 'string', 'min:8', 'max:128'],
         ]);
 

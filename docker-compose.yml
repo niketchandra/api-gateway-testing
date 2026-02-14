@@ -3,7 +3,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_DATABASE: users_db
+      MYSQL_DATABASE: atglance
     ports:
       - "3306:3306"
     healthcheck:
@@ -31,7 +31,7 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: users_db
+      DB_DATABASE: atglance
       DB_USERNAME: root
       DB_PASSWORD: ""
       REDIS_HOST: redis
@@ -56,7 +56,7 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_DATABASE: users_db
+      DB_DATABASE: atglance
       DB_USERNAME: root
       DB_PASSWORD: ""
       REDIS_HOST: redis

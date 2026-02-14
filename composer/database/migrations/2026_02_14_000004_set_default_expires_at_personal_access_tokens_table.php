@@ -1,8 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -11,12 +10,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('personal_access_tokens', function (Blueprint $table) {
-            $table->timestamp('expires_at')
-                ->nullable()
-                ->default('2099-12-31 23:59:59')
-                ->change();
-        });
+        DB::statement(
+            "ALTER TABLE `personal_access_tokens` MODIFY `expires_at` DATETIME NULL DEFAULT '2099-12-31 23:59:59'"
+        );
     }
 
     /**
@@ -24,11 +20,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('personal_access_tokens', function (Blueprint $table) {
-            $table->timestamp('expires_at')
-                ->nullable()
-                ->default(null)
-                ->change();
-        });
+        DB::statement(
+            "ALTER TABLE `personal_access_tokens` MODIFY `expires_at` DATETIME NULL DEFAULT NULL"
+        );
     }
 };
