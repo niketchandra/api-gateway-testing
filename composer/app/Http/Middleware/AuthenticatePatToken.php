@@ -45,6 +45,8 @@ class AuthenticatePatToken
             return $patToken->user;
         });
 
+        $request->attributes->set('patToken', $patToken);
+
         return $next($request);
     }
 }

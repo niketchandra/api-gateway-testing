@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\PatTokenController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\SystemRegisterController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,3 +22,6 @@ Route::apiResource('products', ProductController::class);
 // File operations - require PAT token only (permanent token with atgla- prefix)
 Route::post('/files/upload', [FileController::class, 'upload'])->middleware('auth.pat');
 Route::get('/files/{fileId}', [FileController::class, 'download'])->middleware('auth.pat');
+
+// System registration - requires PAT token only
+Route::post('/system-register', [SystemRegisterController::class, 'store'])->middleware('auth.pat');

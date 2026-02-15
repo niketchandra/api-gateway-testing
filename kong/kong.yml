@@ -58,6 +58,12 @@ services:
   - name: files-service
     url: http://api:8000
     routes:
+      - name: system-register-route
+        paths:
+          - /system-register
+        strip_path: false
+        methods:
+          - POST
       - name: files-upload-route
         paths:
           - /files/upload
