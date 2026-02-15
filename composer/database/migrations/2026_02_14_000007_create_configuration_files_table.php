@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('file_name', 255);
             $table->string('file_location', 512);
+            $table->string('status', 20)->default('active');
             $table->timestamps();
 
             $table->index(['user_id', 'file_name']);

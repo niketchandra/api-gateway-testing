@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('ip_address', 45);
             $table->string('tags', 512)->nullable();
             $table->longText('metadata')->nullable();
+            $table->string('status', 20)->default('active');
             $table->timestamps();
         });
     }

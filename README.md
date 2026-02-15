@@ -272,6 +272,16 @@ curl -X GET http://localhost:8002/files/<file_id> \
   -H "Authorization: Bearer <pat_token>"
 ```
 
+## System register (via Kong)
+Register a system using a PAT token (CLI tool passes PAT only):
+
+```bash
+curl -X POST http://localhost:8002/system-register \
+  -H "Authorization: Bearer <pat_token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"system_name\":\"dev\",\"os_type\":\"Windows\",\"ip_address\":\"192.168.1.10\",\"org_id\":null,\"tags\":\"cli,dev\",\"metadata\":\"{\\\"cpu\\\":\\\"i7\\\"}\"}"
+```
+
 ## Auth flow diagram (Session + PAT)
 
 ```mermaid
@@ -288,6 +298,14 @@ Run migrations inside the api container:
 ```bash
 docker compose exec api php artisan migrate --force
 ```
+
+## Database tables (core)
+- users: application users (name, email, password_hash, dob)
+- personal_access_tokens: PAT tokens (user_id, token, abilities, expires_at, last_used_at)
+- sessions: temporary session tokens for login (user_id, token, expires_at, last_used_at)
+- system_register: registered systems (pat_token_id, user_id, org_id nullable, system_name, os_type, ip_address, tags, metadata)
+- configuration_files: uploaded file metadata (user_id, file_name, file_location)
+- raw_data: uploaded file contents (file_id, user_id, file_data)
 
 ## Troubleshooting
 - Kong says "no Route matched": restart Kong after editing kong/kong.yml.

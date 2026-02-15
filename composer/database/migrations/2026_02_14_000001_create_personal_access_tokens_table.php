@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('token', 64)->unique();
             $table->text('abilities')->nullable();
+            $table->string('status', 20)->default('active');
             $table->timestamp('last_used_at')->nullable();
             $table->dateTime('expires_at')->nullable();
             $table->timestamps();
