@@ -2,15 +2,20 @@ FROM php:8.2-cli
 
 WORKDIR /app
 
-RUN apt-get update \
+RUN set -eux \
+    ; apt-get update \
     ; apt-get install -y --no-install-recommends \
         git \
         unzip \
-        libzip-dev \
+        libcurl4-openssl-dev \
         libonig-dev \
+        libxml2-dev \
+        libzip-dev \
     ; docker-php-ext-install \
-        pdo_mysql \
+        curl \
         mbstring \
+        pdo_mysql \
+        xml \
         zip \
     ; pecl install redis \
     ; docker-php-ext-enable redis \
@@ -19,8 +24,9 @@ RUN apt-get update \
 
 COPY composer /app
 
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    ; composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs || composer update --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs \
+RUN set -eux \
+    ; curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    ; composer install --no-interaction --prefer-dist --optimize-autoloader \
     ; if [ ! -f .env ]; then cp .env.example .env; fi \
     ; php artisan key:generate --force \
     ; chmod -R 775 storage bootstrap/cache
