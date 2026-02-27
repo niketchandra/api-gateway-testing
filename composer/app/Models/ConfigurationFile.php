@@ -13,7 +13,9 @@ class ConfigurationFile extends Model
 
     protected $fillable = [
         'user_id',
+        'system_register_id',
         'file_name',
+        'service_name',
         'file_location',
     ];
 

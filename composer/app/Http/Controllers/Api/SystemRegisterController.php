@@ -17,6 +17,7 @@ class SystemRegisterController extends Controller
         $user = $request->user();
         
         $systems = SystemRegister::where('user_id', $user->id)
+            ->where('status', 'active')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -45,6 +46,7 @@ class SystemRegisterController extends Controller
         }
 
         $systems = SystemRegister::where('pat_token_id', $patTokenId)
+            ->where('status', 'active')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -71,6 +73,7 @@ class SystemRegisterController extends Controller
         }
 
         $systems = SystemRegister::where('user_id', $userId)
+            ->where('status', 'active')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -139,6 +142,7 @@ class SystemRegisterController extends Controller
                 'ip_address' => $system->ip_address,
                 'tags' => $system->tags,
                 'metadata' => $system->metadata,
+                'status' => $system->status,
                 'created_at' => $system->created_at,
             ],
         ], 201);

@@ -40,6 +40,8 @@ class FileController extends Controller
                     }
                 },
             ],
+            'system_register_id' => 'nullable|integer|exists:system_register,id',
+            'service_name' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();
@@ -64,7 +66,9 @@ class FileController extends Controller
         // Create configuration file record
         $configFile = ConfigurationFile::create([
             'user_id' => $user->id,
+            'system_register_id' => $request->input('system_register_id'),
             'file_name' => $originalName,
+            'service_name' => $request->input('service_name'),
             'file_location' => $filePath,
         ]);
 
@@ -72,7 +76,9 @@ class FileController extends Controller
         RawData::create([
             'file_id' => $configFile->id,
             'user_id' => $user->id,
+            'system_register_id' => $request->input('system_register_id'),
             'file_name' => $originalName,
+            'service_name' => $request->input('service_name'),
             'file_data' => $fileContent,
         ]);
 
@@ -84,6 +90,8 @@ class FileController extends Controller
                 'original_name' => $originalName,
                 'file_location' => $configFile->file_location,
                 'file_size' => strlen($fileContent),
+                'system_register_id' => $configFile->system_register_id,
+                'service_name' => $configFile->service_name,
                 'created_at' => $configFile->created_at,
             ],
         ], 201);
@@ -164,6 +172,8 @@ class FileController extends Controller
                 return [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
+                    'service_name' => $file->service_name,
+                    'system_register_id' => $file->system_register_id,
                     'file_location' => $file->file_location,
                     'status' => $file->status,
                     'created_at' => $file->created_at,
@@ -232,6 +242,8 @@ class FileController extends Controller
         return response()->json([
             'file_id' => $configFile->id,
             'file_name' => $configFile->file_name,
+            'service_name' => $configFile->service_name,
+            'system_register_id' => $configFile->system_register_id,
             'raw_data' => [
                 'id' => $configFile->rawData->id,
                 'file_data' => $configFile->rawData->file_data,
