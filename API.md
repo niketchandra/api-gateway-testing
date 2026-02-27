@@ -10,11 +10,11 @@
 
 1. [Authentication](#authentication)
 2. [User Management](#user-management)
-3. [Product Management](#product-management)
-4. [PAT Token Management](#pat-token-management)
-5. [System Registration](#system-registration)
-6. [Configuration File Management](#configuration-file-management)
-7. [File Operations](#file-operations)
+<!-- 3. [Product Management](#product-management) -->
+3. [PAT Token Management](#pat-token-management)
+4. [System Registration](#system-registration)
+5. [Configuration File Management](#configuration-file-management)
+6. [File Operations](#file-operations)
 
 ---
 
