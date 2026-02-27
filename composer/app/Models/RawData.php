@@ -15,6 +15,7 @@ class RawData extends Model
     protected $fillable = [
         'file_id',
         'user_id',
+        'file_name',
         'file_data',
     ];
 

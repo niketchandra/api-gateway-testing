@@ -64,6 +64,19 @@ services:
         strip_path: false
         methods:
           - POST
+          - GET
+      - name: system-register-pat-route
+        paths:
+          - /system-register/pat
+        strip_path: false
+        methods:
+          - GET
+      - name: system-register-user-route
+        paths:
+          - /system-register/user
+        strip_path: false
+        methods:
+          - GET
       - name: files-upload-route
         paths:
           - /files/upload
@@ -76,3 +89,22 @@ services:
         strip_path: false
         methods:
           - GET
+      - name: config-files-upload-route
+        paths:
+          - /config-files/upload
+        strip_path: false
+        methods:
+          - POST
+      - name: config-files-list-route
+        paths:
+          - /config-files
+        strip_path: false
+        methods:
+          - GET
+      - name: config-files-download-route
+        paths:
+          - /config-files/
+        strip_path: false
+        methods:
+          - GET
+          - DELETE

@@ -23,5 +23,15 @@ Route::apiResource('products', ProductController::class);
 Route::post('/files/upload', [FileController::class, 'upload'])->middleware('auth.pat');
 Route::get('/files/{fileId}', [FileController::class, 'download'])->middleware('auth.pat');
 
+// Configuration file operations - require PAT token only
+Route::post('/config-files/upload', [FileController::class, 'uploadConfigFile'])->middleware('auth.pat');
+Route::get('/config-files', [FileController::class, 'listConfigFiles'])->middleware('auth.pat');
+Route::get('/config-files/{fileId}', [FileController::class, 'downloadConfigFile'])->middleware('auth.pat');
+Route::get('/config-files/{fileId}/raw-data', [FileController::class, 'getRawData'])->middleware('auth.pat');
+Route::delete('/config-files/{fileId}', [FileController::class, 'deleteConfigFile'])->middleware('auth.pat');
+
 // System registration - requires PAT token only
 Route::post('/system-register', [SystemRegisterController::class, 'store'])->middleware('auth.pat');
+Route::get('/system-register', [SystemRegisterController::class, 'index'])->middleware('auth.pat');
+Route::get('/system-register/pat/{patTokenId}', [SystemRegisterController::class, 'getByPatToken'])->middleware('auth.pat');
+Route::get('/system-register/user/{userId}', [SystemRegisterController::class, 'getByUser'])->middleware('auth.pat');

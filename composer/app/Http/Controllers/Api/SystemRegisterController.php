@@ -9,6 +9,89 @@ use Illuminate\Http\Request;
 
 class SystemRegisterController extends Controller
 {
+    /**
+     * Get all system registers for the authenticated user
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        
+        $systems = SystemRegister::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'total' => $systems->count(),
+            'systems' => $systems,
+        ]);
+    }
+
+    /**
+     * Get system registers by PAT token ID
+     */
+    public function getByPatToken(Request $request, $patTokenId)
+    {
+        $user = $request->user();
+        
+        // Verify the PAT token belongs to the authenticated user
+        $patToken = PatToken::where('id', $patTokenId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$patToken) {
+            return response()->json([
+                'message' => 'PAT token not found or does not belong to you'
+            ], 404);
+        }
+
+        $systems = SystemRegister::where('pat_token_id', $patTokenId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'pat_token_id' => $patTokenId,
+            'pat_token_name' => $patToken->name,
+            'total_systems' => $systems->count(),
+            'systems' => $systems,
+        ]);
+    }
+
+    /**
+     * Get system registers count and details by user ID
+     */
+    public function getByUser(Request $request, $userId)
+    {
+        $authenticatedUser = $request->user();
+        
+        // Only allow users to view their own data or implement admin check here
+        if ($authenticatedUser->id != $userId) {
+            return response()->json([
+                'message' => 'Unauthorized to view other user\'s systems'
+            ], 403);
+        }
+
+        $systems = SystemRegister::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Group by PAT token to show breakdown
+        $groupedByPat = $systems->groupBy('pat_token_id')->map(function ($group) {
+            $patToken = PatToken::find($group->first()->pat_token_id);
+            return [
+                'pat_token_id' => $group->first()->pat_token_id,
+                'pat_token_name' => $patToken ? $patToken->name : 'Unknown',
+                'count' => $group->count(),
+            ];
+        })->values();
+
+        return response()->json([
+            'user_id' => $userId,
+            'total_systems' => $systems->count(),
+            'systems_by_pat_token' => $groupedByPat,
+            'systems' => $systems,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

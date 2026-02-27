@@ -27,6 +27,7 @@ See [IMPLEMENTATION.md](IMPLEMENTATION.md) for complete guide and testing instru
 
 ## Docs
 - Main README: [README.md](README.md)
+- **API Documentation**: [API.md](API.md) - Complete API endpoint reference (Users, Products, Auth, Files, System Registration, Configuration Files)
 - Implementation Guide (Circuit Breaker + Queue): [IMPLEMENTATION.md](IMPLEMENTATION.md)
 - Laravel API details: [LARAVEL.md](LARAVEL.md)
 - Kong config and routing: [KONG.md](KONG.md)
