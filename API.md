@@ -322,7 +322,7 @@ curl -X DELETE http://localhost:8002/users/1 \
   -H "Authorization: Bearer {session_token}"
 ```
 
----
+<!-- ---
 
 ## Product Management
 
@@ -435,7 +435,7 @@ curl -X POST http://localhost:8002/products \
   }'
 ```
 
----
+ ---
 
 ### Update Product
 
@@ -504,7 +504,7 @@ No content
 ```bash
 curl -X DELETE http://localhost:8002/products/1 \
   -H "Authorization: Bearer {session_token}"
-```
+``` -->
 
 ---
 
