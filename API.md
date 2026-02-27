@@ -596,6 +596,147 @@ curl -X GET http://localhost:8002/auth/pat-tokens \
 
 ---
 
+### Validate PAT Token (GET)
+
+**Endpoint**: `GET /auth/validate-token`
+
+**Description**: Validate a PAT token by extracting it from Authorization header. Returns user information if token is valid and user status is 'active'
+
+**Headers**:
+```
+Authorization: Bearer {token}
+```
+
+**Response** (200 - Valid Token):
+```json
+{
+  "message": "Token is valid",
+  "is_valid": true,
+  "user": {
+    "id": 3,
+    "name": "Nitin",
+    "email": "nitin@gmail.com",
+    "dob": "1992-01-01T00:00:00.000000Z",
+    "status": "active",
+    "created_at": "2026-02-27T20:04:38.000000Z",
+    "updated_at": "2026-02-27T20:04:38.000000Z"
+  },
+  "token_info": {
+    "id": 1,
+    "name": "my_pat1",
+    "abilities": ["*"],
+    "expires_at": "2099-12-31T23:59:59.000000Z",
+    "last_used_at": "2026-02-27T22:17:00.000000Z",
+    "created_at": "2026-02-27T20:04:45.000000Z"
+  }
+}
+```
+
+**Response** (401 - Invalid/Expired Token):
+```json
+{
+  "message": "Invalid or expired token",
+  "is_valid": false,
+  "error": "Token not found or has expired"
+}
+```
+
+**Response** (403 - Inactive User):
+```json
+{
+  "message": "User account is not active",
+  "is_valid": false,
+  "error": "User status is not active"
+}
+```
+
+**Example**:
+```bash
+curl -X GET http://localhost:8002/auth/validate-token \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN"
+```
+
+---
+
+### Validate PAT Token (POST)
+
+**Endpoint**: `POST /auth/validate-token`
+
+**Description**: Validate a PAT token by passing it in request body. Returns user information if token is valid and user status is 'active'
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Request Body**:
+```json
+{
+  "token": "atgla-xPyt2TeLn3TbbalkBMN"
+}
+```
+
+**Response** (200 - Valid Token):
+```json
+{
+  "message": "Token is valid",
+  "is_valid": true,
+  "user": {
+    "id": 3,
+    "name": "Nitin",
+    "email": "nitin@gmail.com",
+    "dob": "1992-01-01T00:00:00.000000Z",
+    "status": "active",
+    "created_at": "2026-02-27T20:04:38.000000Z",
+    "updated_at": "2026-02-27T20:04:38.000000Z"
+  },
+  "token_info": {
+    "id": 1,
+    "name": "my_pat1",
+    "abilities": ["*"],
+    "expires_at": "2099-12-31T23:59:59.000000Z",
+    "last_used_at": "2026-02-27T22:17:06.000000Z",
+    "created_at": "2026-02-27T20:04:45.000000Z"
+  }
+}
+```
+
+**Response** (400 - Missing Token):
+```json
+{
+  "message": "Token is required",
+  "is_valid": false,
+  "error": "Token field is missing from request body"
+}
+```
+
+**Response** (401 - Invalid/Expired Token):
+```json
+{
+  "message": "Invalid or expired token",
+  "is_valid": false,
+  "error": "Token not found or has expired"
+}
+```
+
+**Response** (403 - Inactive User):
+```json
+{
+  "message": "User account is not active",
+  "is_valid": false,
+  "error": "User status is not active"
+}
+```
+
+**Example**:
+```bash
+curl -X POST http://localhost:8002/auth/validate-token \
+  -H "Content-Type: application/json" \
+  -d '{"token": "atgla-xPyt2TeLn3TbbalkBMN"}'
+```
+
+---
+
 ## System Registration
 
 ### Register System

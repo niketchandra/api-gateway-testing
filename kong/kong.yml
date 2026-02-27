@@ -55,6 +55,18 @@ services:
         methods:
           - POST
           - GET
+      - name: auth-validate-token-post-route
+        paths:
+          - /auth/validate-token
+        strip_path: false
+        methods:
+          - POST
+      - name: auth-validate-token-get-route
+        paths:
+          - /auth/validate-token
+        strip_path: false
+        methods:
+          - GET
   - name: files-service
     url: http://api:8000
     routes:
