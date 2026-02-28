@@ -31,7 +31,9 @@ Route::get('/files/{fileId}', [FileController::class, 'download'])->middleware('
 // Configuration file operations - require PAT token only
 Route::post('/config-files/upload', [FileController::class, 'uploadConfigFile'])->middleware('auth.pat');
 Route::get('/config-files', [FileController::class, 'listConfigFiles'])->middleware('auth.pat');
+Route::get('/config-files/filter', [FileController::class, 'listConfigFilesBySystemAndHash'])->middleware('auth.pat');
 Route::get('/config-files/{fileId}', [FileController::class, 'downloadConfigFile'])->middleware('auth.pat');
+Route::get('/config-files/download/{id}', [FileController::class, 'downloadConfigFileById'])->middleware('auth.pat');
 Route::get('/config-files/{fileId}/raw-data', [FileController::class, 'getRawData'])->middleware('auth.pat');
 Route::delete('/config-files/{fileId}', [FileController::class, 'deleteConfigFile'])->middleware('auth.pat');
 

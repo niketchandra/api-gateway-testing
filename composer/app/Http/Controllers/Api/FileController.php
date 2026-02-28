@@ -42,6 +42,7 @@ class FileController extends Controller
             ],
             'system_register_id' => 'nullable|integer|exists:system_register,id',
             'service_name' => 'nullable|string|max:255',
+            'validation_hash' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();
@@ -70,6 +71,7 @@ class FileController extends Controller
             'file_name' => $originalName,
             'service_name' => $request->input('service_name'),
             'file_location' => $filePath,
+            'validation_hash' => $request->input('validation_hash'),
         ]);
 
         // Store raw data
@@ -80,6 +82,7 @@ class FileController extends Controller
             'file_name' => $originalName,
             'service_name' => $request->input('service_name'),
             'file_data' => $fileContent,
+            'validation_hash' => $request->input('validation_hash'),
         ]);
 
         return response()->json([
@@ -92,6 +95,7 @@ class FileController extends Controller
                 'file_size' => strlen($fileContent),
                 'system_register_id' => $configFile->system_register_id,
                 'service_name' => $configFile->service_name,
+                'validation_hash' => $configFile->validation_hash,
                 'created_at' => $configFile->created_at,
             ],
         ], 201);
@@ -188,6 +192,46 @@ class FileController extends Controller
     }
 
     /**
+     * List configuration files filtered by system_id and validation_hash (active only)
+     */
+    public function listConfigFilesBySystemAndHash(Request $request)
+    {
+        $data = $request->validate([
+            'system_id' => ['required', 'integer', 'exists:system_register,id'],
+            'validation_hash' => ['required', 'string', 'max:255'],
+        ]);
+
+        $user = $request->user();
+
+        $files = ConfigurationFile::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('system_register_id', $data['system_id'])
+            ->where('validation_hash', $data['validation_hash'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($file) {
+                return [
+                    'id' => $file->id,
+                    'file_name' => $file->file_name,
+                    'service_name' => $file->service_name,
+                    'system_register_id' => $file->system_register_id,
+                    'validation_hash' => $file->validation_hash,
+                    'file_location' => $file->file_location,
+                    'status' => $file->status,
+                    'created_at' => $file->created_at,
+                    'updated_at' => $file->updated_at,
+                ];
+            });
+
+        return response()->json([
+            'system_id' => (int) $data['system_id'],
+            'validation_hash' => $data['validation_hash'],
+            'total' => $files->count(),
+            'files' => $files,
+        ]);
+    }
+
+    /**
      * Download configuration file from file system (active only)
      */
     public function downloadConfigFile(Request $request, $fileId)
@@ -212,6 +256,43 @@ class FileController extends Controller
         $mimeType = Storage::mimeType($configFile->file_location);
 
         // Return file as download
+        return response($fileContent, 200)
+            ->header('Content-Type', $mimeType)
+            ->header('Content-Disposition', 'attachment; filename="' . $configFile->file_name . '"');
+    }
+
+    /**
+     * Download configuration file by configuration file ID (active only)
+     */
+    public function downloadConfigFileById(Request $request, $id)
+    {
+        $data = $request->validate([
+            'system_id' => ['required', 'integer', 'exists:system_register,id'],
+        ]);
+
+        $user = $request->user();
+
+        $configFile = ConfigurationFile::where('id', $id)
+            ->where('user_id', $user->id)
+            ->where('system_register_id', $data['system_id'])
+            ->where('status', 'active')
+            ->first();
+
+        if (!$configFile) {
+            return response()->json([
+                'message' => 'Configuration file not found for provided id and system_id',
+            ], 404);
+        }
+
+        if (!Storage::exists($configFile->file_location)) {
+            return response()->json([
+                'message' => 'File not found in storage',
+            ], 404);
+        }
+
+        $fileContent = Storage::get($configFile->file_location);
+        $mimeType = Storage::mimeType($configFile->file_location);
+
         return response($fileContent, 200)
             ->header('Content-Type', $mimeType)
             ->header('Content-Disposition', 'attachment; filename="' . $configFile->file_name . '"');

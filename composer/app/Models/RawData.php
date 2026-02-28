@@ -19,6 +19,7 @@ class RawData extends Model
         'file_name',
         'service_name',
         'file_data',
+        'validation_hash',
     ];
 
     protected $casts = [

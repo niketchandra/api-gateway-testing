@@ -1012,7 +1012,10 @@ Content-Type: multipart/form-data
 ```
 
 **Request Body**:
-- Form field: `file` (multipart file, max 10MB)
+- Form field: `file` (multipart file, max 10MB) **[Required]**
+- Form field: `system_register_id` (string) **[Required]**
+- Form field: `service_name` (string) **[Required]**
+- Form field: `validation_hash` (string, max 255) **[Optional]** - Hash for validation purposes
 
 **Response** (201):
 ```json
@@ -1024,6 +1027,9 @@ Content-Type: multipart/form-data
     "original_name": "app.config",
     "file_location": "config_files/1/uuid-app.config",
     "file_size": 512,
+    "system_register_id": "1093719686",
+    "service_name": "testService",
+    "validation_hash": "abc123def456",
     "created_at": "2026-02-27T21:30:00.000000Z"
   }
 }
@@ -1033,7 +1039,55 @@ Content-Type: multipart/form-data
 ```bash
 curl -X POST http://localhost:8002/config-files/upload \
   -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
-  -F "file=@app.config"
+  -F "file=@app.config" \
+  -F "system_register_id=1093719686" \
+  -F "service_name=testService" \
+  -F "validation_hash=abc123def456"
+```
+
+---
+
+### List Configuration Files by System and Validation Hash
+
+**Endpoint**: `GET /config-files/filter`
+
+**Description**: List active configuration files for authenticated PAT user filtered by `system_id` and `validation_hash`
+
+**Headers**:
+```
+Authorization: Bearer {pat_token}
+```
+
+**Query Parameters**:
+- `system_id` (required, integer): Registered system ID
+- `validation_hash` (required, string, max 255): Validation hash to match
+
+**Response** (200):
+```json
+{
+  "system_id": 1093719686,
+  "validation_hash": "abc123def456",
+  "total": 1,
+  "files": [
+    {
+      "id": 12,
+      "file_name": "app.config",
+      "service_name": "testService",
+      "system_register_id": 1093719686,
+      "validation_hash": "abc123def456",
+      "file_location": "config_files/3/uuid-app.config",
+      "status": "active",
+      "created_at": "2026-02-28T00:15:00.000000Z",
+      "updated_at": "2026-02-28T00:15:00.000000Z"
+    }
+  ]
+}
+```
+
+**Example**:
+```bash
+curl -X GET "http://localhost:8002/config-files/filter?system_id=1093719686&validation_hash=abc123def456" \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN"
 ```
 
 ---
@@ -1092,6 +1146,41 @@ Authorization: Bearer {pat_token}
 **Example**:
 ```bash
 curl -X GET http://localhost:8002/config-files/1 \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -o downloaded-app.config
+```
+
+---
+
+### Download Configuration File by ID
+
+**Endpoint**: `GET /config-files/download/{id}`
+
+**Description**: Download an active configuration file using configuration file `id` and required `system_id`.
+Access is validated with PAT token and ownership checks.
+
+**Headers**:
+```
+Authorization: Bearer {pat_token}
+```
+
+**Path Parameter**:
+- `id` (required, integer): Configuration file ID
+
+**Query Parameters**:
+- `system_id` (required, integer): System register ID associated with the configuration file
+
+**Response** (200):
+- Returns the file with appropriate Content-Type header
+- File is downloaded with original filename
+
+**Error Responses**:
+- `401`: Unauthorized (invalid or missing PAT token)
+- `404`: Configuration file not found for provided `id` and `system_id`
+
+**Example**:
+```bash
+curl -X GET "http://localhost:8002/config-files/download/12?system_id=1093719686" \
   -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
   -o downloaded-app.config
 ```
