@@ -10,11 +10,24 @@
 
 1. [Authentication](#authentication)
 2. [User Management](#user-management)
-<!-- 3. [Product Management](#product-management) -->
 3. [PAT Token Management](#pat-token-management)
-4. [System Registration](#system-registration)
-5. [Configuration File Management](#configuration-file-management)
-6. [File Operations](#file-operations)
+4. [Token Validation](#token-validation)
+5. [System Registration](#system-registration)
+6. [System Deregistration](#system-deregistration)
+7. [Configuration File Management](#configuration-file-management)
+  - [Upload](#upload-configuration-file)
+  - [List](#list-configuration-files)
+  - [Filter by System & Hash](#list-configuration-files-by-system-and-validation-hash)
+  - [Download](#download-configuration-file)
+  - [Download by ID](#download-configuration-file-by-id)
+  - [Raw Data](#get-configuration-file-raw-data)
+  - [Delete](#delete-configuration-file)
+8. [File Operations](#file-operations)
+9. [Error Responses](#error-responses)
+10. [Authentication Notes](#authentication-notes)
+11. [Rate Limiting](#rate-limiting)
+12. [Data Storage](#data-storage)
+13. [Changelog](#changelog)
 
 ---
 
@@ -596,6 +609,10 @@ curl -X GET http://localhost:8002/auth/pat-tokens \
 
 ---
 
+## Token Validation
+
+Validate Personal Access Tokens to verify authentication and user status.
+
 ### Validate PAT Token (GET)
 
 **Endpoint**: `GET /auth/validate-token`
@@ -947,6 +964,10 @@ curl -X GET http://localhost:8002/system-register/user/1 \
 ```
 
 ---
+
+## System Deregistration
+
+Deregister systems and change their status from active to inactive.
 
 ### Deregister System
 
@@ -1438,3 +1459,15 @@ curl -X GET http://localhost:8002/files/1 \
 - PAT token support
 - System registration
 - Configuration file management
+
+**Version 1.1** - March 1, 2026
+- Added validation_hash field to system_register table
+- Added validation_hash field to configuration_files table
+- Added validation_hash field to raw_data table
+- New endpoint: GET /config-files/filter - Filter configs by system_id + validation_hash
+- New endpoint: GET /config-files/download/{id} - Download with system_id validation
+- Updated system registration to accept and persist validation_hash
+- Updated config file upload to accept and persist validation_hash
+- Enhanced security: download by ID now requires system_id validation
+- Comprehensive API documentation reorganized by feature
+- File storage location and database tables documentation

@@ -16,6 +16,16 @@ This project provides a complete CRUD API for a User resource using Laravel and 
 - **Query by User/Token**: List registered systems filtered by user or PAT token
 - **Status Tracking**: Monitor active/inactive system states
 
+### ✨ Configuration File Management
+- **File Upload**: Upload configuration files with system and validation tracking
+- **Validation Hash**: Track uploaded configs via `validation_hash` for verification
+- **Filtered Listing**: List config files by `system_id` and `validation_hash`
+- **Secure Download**: Download files by ID with `system_id` validation and PAT auth
+- **Raw Data Access**: Retrieve stored file content from database
+- **Soft Delete**: Mark files inactive while preserving data
+- **Storage**: Files stored in `storage/app/private/config_files/{user_id}/` with UUID names
+- **Database**: Metadata in `configuration_files`, content in `raw_data` table
+
 ### ✨ Resilience & High Availability
 This project implements production-ready resilience patterns:
 
@@ -142,6 +152,66 @@ Kong runs in DB-less mode and loads kong/kong.yml at startup. The config defines
 Details: [KONG.md](KONG.md)
 
 ## CRUD commands (via Kong)
+## File Storage Location
+
+Configuration files uploaded via `/config-files/upload` are stored at:
+
+**In Docker**: 
+```
+/app/storage/app/private/config_files/{user_id}/{uuid}.{extension}
+```
+
+**On Host Machine**:
+```
+composer/storage/app/private/config_files/{user_id}/{uuid}.{extension}
+```
+
+**Example**: 
+- Docker: `/app/storage/app/private/config_files/3/8c399352-2c65-41e7-8480-4ac4d3200bc2.conf`
+- Host: `composer/storage/app/private/config_files/3/8c399352-2c65-41e7-8480-4ac4d3200bc2.conf`
+
+Files are also stored in the database:
+- **Metadata**: `configuration_files` table (file_name, location, system_id, service_name, validation_hash, status)
+- **Content**: `raw_data` table (file_data, validation_hash, status)
+
+## API Endpoints Quick Reference
+
+### Authentication (Session & PAT Tokens)
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - Get session token
+- `POST /auth/logout` - Logout user
+- `GET /auth/validate-token` - Validate PAT via header
+- `POST /auth/validate-token` - Validate PAT via body
+- `POST /auth/pat-tokens` - Create new PAT token
+- `GET /auth/pat-tokens` - List PAT tokens
+
+### System Management (PAT Required)
+- `POST /system-register` - Register system with optional validation_hash
+- `GET /system-register` - List user's systems
+- `GET /system-register/pat/{id}` - Get systems by PAT token
+- `GET /system-register/user/{id}` - Get systems by user
+- `POST /system-deregister` - Deregister system (change to inactive)
+
+### Configuration File Management (PAT Required)
+- `POST /config-files/upload` - Upload config file (system_id, service_name, validation_hash)
+- `GET /config-files` - List all active configs
+- `GET /config-files/filter?system_id=...&validation_hash=...` - Filter configs by system + hash
+- `GET /config-files/{id}` - Download config file by ID
+- `GET /config-files/download/{id}?system_id=...` - Download with system_id validation
+- `GET /config-files/{id}/raw-data` - Get file content from database
+- `DELETE /config-files/{id}` - Soft delete config (mark inactive)
+
+### File Operations (PAT Required)
+- `POST /files/upload` - Upload generic file
+- `GET /files/{id}` - Download generic file
+
+### User Management (Session Required)
+- `GET /users` - List users
+- `GET /users/{id}` - Get user by ID
+- `POST /users` - Create user
+- `PUT /users/{id}` - Update user
+- `DELETE /users/{id}` - Delete user
+
 These examples use a default test user. If it does not exist, create it first.
 
 Default test credentials:
@@ -290,6 +360,79 @@ curl -X POST http://localhost:8002/system-register \
   -d "{\"system_name\":\"dev\",\"os_type\":\"Windows\",\"ip_address\":\"192.168.1.10\",\"org_id\":null,\"tags\":\"cli,dev\",\"metadata\":\"{\\\"cpu\\\":\\\"i7\\\"}\"}"
 ```
 
+## Configuration File Management (via Kong)
+
+### Upload Configuration File
+Upload a config file with system_id, service_name, and optional validation_hash:
+
+```bash
+curl -X POST http://localhost:8002/config-files/upload \
+  -H "Authorization: Bearer <pat_token>" \
+  -F "file=@app.config" \
+  -F "system_register_id=1093719686" \
+  -F "service_name=myService" \
+  -F "validation_hash=abc123def456"
+```
+
+### List All Configuration Files
+List all active config files for authenticated user:
+
+```bash
+curl -X GET http://localhost:8002/config-files \
+  -H "Authorization: Bearer <pat_token>"
+```
+
+### Filter Configuration Files
+Filter config files by system_id and validation_hash:
+
+```bash
+curl -X GET "http://localhost:8002/config-files/filter?system_id=1093719686&validation_hash=abc123def456" \
+  -H "Authorization: Bearer <pat_token>"
+```
+
+### Download Configuration File
+Download a config file by ID (simple):
+
+```bash
+curl -X GET http://localhost:8002/config-files/12 \
+  -H "Authorization: Bearer <pat_token>" \
+  -o downloaded-app.config
+```
+
+### Download Configuration File by ID with System Validation
+Download a config file by ID, requires system_id validation:
+
+```bash
+curl -X GET "http://localhost:8002/config-files/download/12?system_id=1093719686" \
+  -H "Authorization: Bearer <pat_token>" \
+  -o downloaded-app.config
+```
+
+### Get Raw File Data
+Get stored file content from database:
+
+```bash
+curl -X GET http://localhost:8002/config-files/12/raw-data \
+  -H "Authorization: Bearer <pat_token>"
+```
+
+### Delete (Soft Delete) Configuration File
+Mark a config file as inactive:
+
+```bash
+curl -X DELETE http://localhost:8002/config-files/12 \
+  -H "Authorization: Bearer <pat_token>"
+```
+
+### Deregister System
+Change system status from active to inactive:
+
+```bash
+curl -X POST "http://localhost:8002/system-deregister?systemId=1093719686" \
+  -H "Authorization: Bearer <pat_token>" \
+  -H "Content-Type: application/json"
+```
+
 ## Auth flow diagram (Session + PAT)
 
 ```mermaid
@@ -314,6 +457,19 @@ docker compose exec api php artisan migrate --force
 - system_register: registered systems (pat_token_id, user_id, org_id nullable, system_name, os_type, ip_address, tags, metadata)
 - configuration_files: uploaded file metadata (user_id, file_name, file_location)
 - raw_data: uploaded file contents (file_id, user_id, file_data)
+
+## Database tables (updated with validation_hash)
+- users: application users (id, name, email, password_hash, dob, status, created_at, updated_at)
+- personal_access_tokens: PAT tokens (id, user_id, token, abilities, expires_at, last_used_at, created_at)
+- sessions: temporary session tokens (id, user_id, token, expires_at, last_used_at, created_at)
+- system_register: registered systems (id, pat_token_id, user_id, system_name, os_type, ip_address, org_id, tags, metadata, **validation_hash**, status, created_at, updated_at)
+- configuration_files: uploaded file metadata (id, user_id, system_register_id, file_name, service_name, file_location, **validation_hash**, status, created_at, updated_at)
+- raw_data: uploaded file contents (id, file_id, user_id, system_register_id, file_name, service_name, file_data, **validation_hash**, status, created_at, updated_at)
+
+**Key Notes**:
+- `validation_hash` (optional): Tracks validation status across system_register, configuration_files, and raw_data tables
+- `status`: Tracks active/inactive state for systems and files
+- Configuration files stored in both file system (`storage/app/private/config_files/{user_id}/`) and database
 
 ## Troubleshooting
 - Kong says "no Route matched": restart Kong after editing kong/kong.yml.
