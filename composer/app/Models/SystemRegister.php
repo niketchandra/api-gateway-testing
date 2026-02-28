@@ -28,6 +28,7 @@ class SystemRegister extends Model
         'tags',
         'metadata',
         'status',
+        'validation_hash',
     ];
     
     protected $attributes = [

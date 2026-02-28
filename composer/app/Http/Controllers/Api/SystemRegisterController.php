@@ -104,6 +104,7 @@ class SystemRegisterController extends Controller
             'ip_address' => ['required', 'string', 'max:45'],
             'tags' => ['nullable', 'string', 'max:512'],
             'metadata' => ['nullable', 'string'],
+            'validation_hash' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = $request->user();
@@ -128,6 +129,7 @@ class SystemRegisterController extends Controller
             'ip_address' => $data['ip_address'],
             'tags' => $data['tags'] ?? null,
             'metadata' => $data['metadata'] ?? null,
+            'validation_hash' => $data['validation_hash'] ?? null,
         ]);
 
         return response()->json([
@@ -142,9 +144,52 @@ class SystemRegisterController extends Controller
                 'ip_address' => $system->ip_address,
                 'tags' => $system->tags,
                 'metadata' => $system->metadata,
+                'validation_hash' => $system->validation_hash,
                 'status' => $system->status,
                 'created_at' => $system->created_at,
             ],
         ], 201);
+    }
+
+    /**
+     * Deregister a system - change status to inactive
+     */
+    public function deregister(Request $request)
+    {
+        $systemId = $request->query('systemId') ?? $request->input('systemId');
+        
+        if (!$systemId) {
+            return response()->json([
+                'message' => 'systemId is required'
+            ], 400);
+        }
+        
+        $user = $request->user();
+        
+        // Find the system by ID
+        $system = SystemRegister::find($systemId);
+
+        if (!$system) {
+            return response()->json([
+                'message' => 'System not found'
+            ], 404);
+        }
+
+        // Verify the system belongs to the authenticated user
+        if ($system->user_id != $user->id) {
+            return response()->json([
+                'message' => 'Unauthorized to deregister this system'
+            ], 403);
+        }
+
+        // Update the status to inactive
+        $system->status = 'inactive';
+        $system->save();
+
+        return response()->json([
+            'message' => 'System deregistered successfully',
+            'system_id' => $system->id,
+            'status' => $system->status,
+        ], 200);
     }
 }

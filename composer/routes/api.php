@@ -40,3 +40,6 @@ Route::post('/system-register', [SystemRegisterController::class, 'store'])->mid
 Route::get('/system-register', [SystemRegisterController::class, 'index'])->middleware('auth.pat');
 Route::get('/system-register/pat/{patTokenId}', [SystemRegisterController::class, 'getByPatToken'])->middleware('auth.pat');
 Route::get('/system-register/user/{userId}', [SystemRegisterController::class, 'getByUser'])->middleware('auth.pat');
+
+// System deregistration - requires PAT token only
+Route::post('/system-deregister', [SystemRegisterController::class, 'deregister'])->middleware('auth.pat');

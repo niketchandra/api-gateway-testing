@@ -89,6 +89,12 @@ services:
         strip_path: false
         methods:
           - GET
+      - name: system-deregister-route
+        paths:
+          - /system-deregister
+        strip_path: false
+        methods:
+          - POST
       - name: files-upload-route
         paths:
           - /files/upload
