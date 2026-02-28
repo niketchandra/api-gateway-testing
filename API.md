@@ -743,7 +743,7 @@ curl -X POST http://localhost:8002/auth/validate-token \
 
 **Endpoint**: `POST /system-register`
 
-**Description**: Register a system/device with PAT token
+**Description**: Register a system/device with PAT token. Accepts optional `validation_hash` for system validation.
 
 **Headers**:
 ```
@@ -751,7 +751,7 @@ Authorization: Bearer {pat_token}
 Content-Type: application/json
 ```
 
-**Request Body**:
+**Request Body** (JSON) or **Query Parameters**:
 ```json
 {
   "system_name": "Production Server",
@@ -759,7 +759,8 @@ Content-Type: application/json
   "ip_address": "192.168.1.100",
   "org_id": 1,
   "tags": "prod, critical, backend",
-  "metadata": "{\"cpu\": \"x86_64\", \"hostname\": \"prod-server\"}"
+  "metadata": "{\"cpu\": \"x86_64\", \"hostname\": \"prod-server\"}",
+  "validation_hash": "11111111111111111111111111111111111111111111111111"
 }
 ```
 
@@ -777,12 +778,21 @@ Content-Type: application/json
     "org_id": 1,
     "tags": "prod, critical, backend",
     "metadata": "{\"cpu\": \"x86_64\", \"hostname\": \"prod-server\"}",
+    "validation_hash": "11111111111111111111111111111111111111111111111111",
+    "status": "active",
     "created_at": "2026-02-27T21:25:00.000000Z"
   }
 }
 ```
 
-**Example**:
+**Example** (with validation_hash via query params):
+```bash
+curl -X POST "http://localhost:8002/system-register?system_name=Production%20Server&os_type=Linux&ip_address=192.168.1.100&validation_hash=11111111111111111111111111111111111111111111111111" \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -H "Content-Type: application/json"
+```
+
+**Example** (with validation_hash in JSON body):
 ```bash
 curl -X POST http://localhost:8002/system-register \
   -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
@@ -793,7 +803,8 @@ curl -X POST http://localhost:8002/system-register \
     "ip_address": "192.168.1.100",
     "org_id": 1,
     "tags": "prod, critical, backend",
-    "metadata": "{\"cpu\": \"x86_64\", \"hostname\": \"prod-server\"}"
+    "metadata": "{\"cpu\": \"x86_64\", \"hostname\": \"prod-server\"}",
+    "validation_hash": "11111111111111111111111111111111111111111111111111"
   }'
 ```
 
@@ -933,6 +944,55 @@ Authorization: Bearer {pat_token}
 ```bash
 curl -X GET http://localhost:8002/system-register/user/1 \
   -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN"
+```
+
+---
+
+### Deregister System
+
+**Endpoint**: `POST /system-deregister`
+
+**Description**: Deregister a system by changing its status from `active` to `inactive`. Only the system owner (authenticated user) can deregister their own systems.
+
+**Headers**:
+```
+Authorization: Bearer {pat_token}
+Content-Type: application/json
+```
+
+**Query Parameters** or **Request Body**:
+- `systemId` (required, integer): The system ID to deregister
+
+**Response** (200):
+```json
+{
+  "message": "System deregistered successfully",
+  "system_id": 1828058512,
+  "status": "inactive"
+}
+```
+
+**Error Responses**:
+- `400`: systemId is required
+- `401`: Unauthorized (invalid or missing PAT token)
+- `403`: Unauthorized (system belongs to another user)
+- `404`: System not found
+
+**Example** (via query parameter):
+```bash
+curl -X POST "http://localhost:8002/system-deregister?systemId=1828058512" \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -H "Content-Type: application/json"
+```
+
+**Example** (via request body):
+```bash
+curl -X POST "http://localhost:8002/system-deregister" \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemId": 1828058512
+  }'
 ```
 
 ---

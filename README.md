@@ -9,6 +9,13 @@ This project provides a complete CRUD API for a User resource using Laravel and 
 
 ## Features
 
+### ✨ System Management & Validation
+- **System Registration**: Register systems/devices with PAT token authentication  
+- **Validation Hash Support**: Track system validation via optional `validation_hash` field  
+- **System Deregistration**: Change system status from `active` to `inactive` (deregister)
+- **Query by User/Token**: List registered systems filtered by user or PAT token
+- **Status Tracking**: Monitor active/inactive system states
+
 ### ✨ Resilience & High Availability
 This project implements production-ready resilience patterns:
 
@@ -27,7 +34,7 @@ See [IMPLEMENTATION.md](IMPLEMENTATION.md) for complete guide and testing instru
 
 ## Docs
 - Main README: [README.md](README.md)
-- **API Documentation**: [API.md](API.md) - Complete API endpoint reference (Users, Products, Auth, Files, System Registration, Configuration Files)
+- **API Documentation**: [API.md](API.md) - Complete API endpoint reference (Auth, Users, Products, PAT Tokens, System Registration, System Deregistration, Configuration Files, File Operations)
 - Implementation Guide (Circuit Breaker + Queue): [IMPLEMENTATION.md](IMPLEMENTATION.md)
 - Laravel API details: [LARAVEL.md](LARAVEL.md)
 - Kong config and routing: [KONG.md](KONG.md)
