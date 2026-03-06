@@ -10,9 +10,11 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        apiPrefix: '',
+        apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\ActivityLogger::class);
+
         $middleware->alias([
             'auth.session' => \App\Http\Middleware\AuthenticateSession::class,
             'auth.pat' => \App\Http\Middleware\AuthenticatePatToken::class,

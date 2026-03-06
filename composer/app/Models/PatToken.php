@@ -17,7 +17,9 @@ class PatToken extends PersonalAccessToken
 		'user_id',
 		'name',
 		'token',
+		'token_encrypted',
 		'abilities',
+		'status',
 		'last_used_at',
 		'expires_at',
 	];

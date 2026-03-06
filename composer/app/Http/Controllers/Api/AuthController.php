@@ -7,18 +7,30 @@ use App\Models\Session;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $data = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'max:128', 'confirmed'],
             'dob' => ['nullable', 'date'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
 
         $user = User::create([
             'name' => $data['name'],
@@ -40,13 +52,34 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $data = $request->validate([
+        $validator = Validator::make($request->all(), [
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:8', 'max:128'],
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
         $user = User::where('email', $data['email'])->first();
-        if (!$user || !Hash::check($data['password'], $user->password_hash)) {
+        $passwordMatches = $user ? Hash::check($data['password'], $user->password_hash) : false;
+
+        Log::info('api_login_attempt', [
+            'email' => $data['email'],
+            'db_default' => config('database.default'),
+            'db_name' => DB::connection()->getDatabaseName(),
+            'db_host' => config('database.connections.mysql.host'),
+            'user_found' => (bool) $user,
+            'password_hash_length' => $user ? strlen((string) $user->password_hash) : 0,
+            'password_matches' => $passwordMatches,
+        ]);
+
+        if (!$user || !$passwordMatches) {
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 

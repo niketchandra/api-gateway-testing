@@ -11,6 +11,8 @@ class Session extends Model
 {
     use HasFactory;
 
+    protected $table = 'session_tokens';
+
     protected $fillable = [
         'user_id',
         'token',

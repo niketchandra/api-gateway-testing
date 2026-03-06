@@ -28,7 +28,7 @@ RUN set -eux \
     ; curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     ; composer install --no-interaction --prefer-dist --optimize-autoloader \
     ; if [ ! -f .env ]; then cp .env.example .env; fi \
-    ; php artisan key:generate --force \
+    ; if ! grep -q "^APP_KEY=base64:" .env; then php artisan key:generate --force; fi \
     ; chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
