@@ -18,6 +18,8 @@ class ConfigurationFile extends Model
         'service_name',
         'file_location',
         'validation_hash',
+        'version',
+        'status',
     ];
 
     protected $casts = [

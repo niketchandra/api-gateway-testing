@@ -43,6 +43,7 @@ class FileController extends Controller
             'system_register_id' => 'nullable|integer|exists:system_register,id',
             'service_name' => 'nullable|string|max:255',
             'validation_hash' => 'nullable|string|max:255',
+            'version' => 'nullable|string|max:50',
         ]);
 
         $user = $request->user();
@@ -72,6 +73,7 @@ class FileController extends Controller
             'service_name' => $request->input('service_name'),
             'file_location' => $filePath,
             'validation_hash' => $request->input('validation_hash'),
+            'version' => $request->input('version'),
         ]);
 
         // Store raw data
@@ -96,6 +98,7 @@ class FileController extends Controller
                 'system_register_id' => $configFile->system_register_id,
                 'service_name' => $configFile->service_name,
                 'validation_hash' => $configFile->validation_hash,
+                'version' => $configFile->version,
                 'created_at' => $configFile->created_at,
             ],
         ], 201);
@@ -178,6 +181,8 @@ class FileController extends Controller
                     'file_name' => $file->file_name,
                     'service_name' => $file->service_name,
                     'system_register_id' => $file->system_register_id,
+                    'validation_hash' => $file->validation_hash,
+                    'version' => $file->version,
                     'file_location' => $file->file_location,
                     'status' => $file->status,
                     'created_at' => $file->created_at,
@@ -216,6 +221,7 @@ class FileController extends Controller
                     'service_name' => $file->service_name,
                     'system_register_id' => $file->system_register_id,
                     'validation_hash' => $file->validation_hash,
+                    'version' => $file->version,
                     'file_location' => $file->file_location,
                     'status' => $file->status,
                     'created_at' => $file->created_at,

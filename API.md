@@ -1321,6 +1321,7 @@ Content-Type: multipart/form-data
 - Form field: `system_register_id` (string) **[Required]**
 - Form field: `service_name` (string) **[Required]**
 - Form field: `validation_hash` (string, max 255) **[Optional]** - Hash for validation purposes
+- Form field: `version` (string, max 50) **[Optional]** - Version identifier for the configuration file
 
 **Response** (201):
 ```json
@@ -1335,6 +1336,7 @@ Content-Type: multipart/form-data
     "system_register_id": "1093719686",
     "service_name": "testService",
     "validation_hash": "abc123def456",
+    "version": "1.0.0",
     "created_at": "2026-02-27T21:30:00.000000Z"
   }
 }
@@ -1347,7 +1349,8 @@ curl -X POST http://localhost:8002/config-files/upload \
   -F "file=@app.config" \
   -F "system_register_id=1093719686" \
   -F "service_name=testService" \
-  -F "validation_hash=abc123def456"
+  -F "validation_hash=abc123def456" \
+  -F "version=1.0.0"
 ```
 
 ---
@@ -1380,6 +1383,7 @@ Authorization: Bearer {pat_token}
       "service_name": "testService",
       "system_register_id": 1093719686,
       "validation_hash": "abc123def456",
+      "version": "1.0.0",
       "file_location": "config_files/3/uuid-app.config",
       "status": "active",
       "created_at": "2026-02-28T00:15:00.000000Z",
@@ -1417,6 +1421,7 @@ Authorization: Bearer {pat_token}
       "id": 1,
       "file_name": "app.config",
       "file_location": "config_files/1/uuid-app.config",
+      "version": "1.0.0",
       "status": "active",
       "created_at": "2026-02-27T21:30:00.000000Z",
       "updated_at": "2026-02-27T21:30:00.000000Z"
@@ -1790,3 +1795,11 @@ curl -X GET http://localhost:8002/files/1 \
 - **API Organization**: Reorganized documentation with explicit Admin APIs section
   - User operations: /system-reactive (PAT token)
   - Admin operations: /system-deregister-force, /system-reactivate-force (session token)
+
+**Version 1.4** - March 8, 2026
+- **Configuration Files Version Support**: Added `version` column to configuration_files table
+  - New optional field: `version` (string, max 50 characters)
+  - POST /config-files/upload now accepts version parameter
+  - All configuration file list/filter endpoints return version in responses
+  - Enables version tracking for configuration file management
+  - Supports versioning strategies (semantic versioning, timestamps, etc.)

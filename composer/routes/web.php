@@ -24,6 +24,7 @@ Route::post('/contact', [AuthController::class, 'storeContact'])->name('contact'
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/configuration-backups', [DashboardController::class, 'configurationBackups'])->name('configuration-backups');
+    Route::get('/configuration-backups/service/{serviceName}/versions', [DashboardController::class, 'viewServiceVersions'])->name('configuration-backups.service-versions');
     Route::get('/configuration-backups/{id}/view', [DashboardController::class, 'viewConfigurationFile'])->name('configuration-backups.view');
     Route::get('/configuration-backups/{id}/download', [DashboardController::class, 'downloadConfigurationFile'])->name('configuration-backups.download');
     Route::get('/systems-registered', [DashboardController::class, 'systemsRegistered'])->name('systems-registered');

@@ -73,11 +73,11 @@
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="background: rgba(255,255,255,0.25); border-radius: 10px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-                                    <i class="fas fa-file-code" style="font-size: 24px; color: white;"></i>
+                                    <i class="fas fa-server" style="font-size: 24px; color: white;"></i>
                                 </div>
-                                <div>
-                                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500; margin-bottom: 2px;">CONFIG ID</div>
-                                    <div style="font-size: 18px; color: white; font-weight: bold;">#{{ $item->id }}</div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); font-weight: 500; margin-bottom: 2px;">SERVICE NAME</div>
+                                    <div style="font-size: 18px; color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $item->service_name ?? 'N/A' }}</div>
                                 </div>
                             </div>
                             <div style="background: {{ $isActive ? 'rgba(76, 175, 80, 0.95)' : 'rgba(244, 67, 54, 0.95)' }}; padding: 6px 14px; border-radius: 20px; font-size: 11px; color: white; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -88,13 +88,13 @@
 
                     <!-- Card Body -->
                     <div style="padding: 24px;">
-                        <!-- Service Name -->
+                        <!-- Config ID -->
                         <div style="margin-bottom: 18px;">
                             <div style="font-size: 11px; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
-                                <i class="fas fa-server" style="margin-right: 4px;"></i> Service Name
+                                <i class="fas fa-hashtag" style="margin-right: 4px;"></i> Config ID
                             </div>
                             <div style="font-size: 16px; color: #333; font-weight: 600;">
-                                {{ $item->service_name ?? 'N/A' }}
+                                #{{ $item->id }}
                             </div>
                         </div>
 
@@ -145,18 +145,16 @@
 
                         <!-- Action Buttons -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
-                            <button onclick="window.location.href='{{ route('configuration-backups.view', ['id' => $item->id]) }}'" 
+                            <button onclick="window.location.href='{{ route('configuration-backups.service-versions', ['serviceName' => urlencode($item->service_name)]) }}'" 
                                     style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
                                     onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)';" 
                                     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                                <i class="fas fa-eye"></i> View Config
+                                <i class="fas fa-eye"></i> View Versions ({{ $item->version_count ?? 1 }})
                             </button>
-                            <button onclick="window.location.href='{{ route('configuration-backups.download', ['id' => $item->id]) }}'" 
-                                    style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
-                                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(245, 87, 108, 0.4)';" 
-                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                                <i class="fas fa-download"></i> Download
-                            </button>
+                            <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; flex-direction: column;">
+                                <div style="font-size: 10px; opacity: 0.9;">LATEST VERSION</div>
+                                <div style="font-size: 16px; font-weight: bold;">{{ $item->version ?? 'N/A' }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>

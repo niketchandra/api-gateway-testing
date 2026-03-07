@@ -75,7 +75,16 @@ class DashboardController extends Controller
 
     public function configurationBackups(Request $request)
     {
+        // Subquery to get the latest version for each service
+        $latestVersionsSubquery = DB::table('configuration_files')
+            ->select('service_name', DB::raw('MAX(id) as latest_id'))
+            ->groupBy('service_name');
+
         $query = DB::table('configuration_files as cf')
+            ->joinSub($latestVersionsSubquery, 'latest', function ($join) {
+                $join->on('cf.service_name', '=', 'latest.service_name')
+                     ->on('cf.id', '=', 'latest.latest_id');
+            })
             ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id')
             ->select(
                 'cf.id',
@@ -83,11 +92,13 @@ class DashboardController extends Controller
                 'cf.service_name',
                 'cf.system_register_id',
                 'cf.validation_hash',
+                'cf.version',
                 'cf.status',
                 'cf.file_location',
                 'cf.created_at',
                 'sr.system_name',
-                'sr.status as system_status'
+                'sr.status as system_status',
+                DB::raw('(SELECT COUNT(*) FROM configuration_files WHERE service_name = cf.service_name) as version_count')
             );
 
         if ($request->filled('service_name')) {
@@ -164,6 +175,38 @@ class DashboardController extends Controller
     }
 
     /**
+     * View all versions of a service configuration
+     */
+    public function viewServiceVersions($serviceName)
+    {
+        $serviceName = urldecode($serviceName);
+        
+        $versions = DB::table('configuration_files as cf')
+            ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id')
+            ->where('cf.service_name', $serviceName)
+            ->select(
+                'cf.id',
+                'cf.file_name',
+                'cf.service_name',
+                'cf.version',
+                'cf.validation_hash',
+                'cf.status',
+                'cf.created_at',
+                'cf.updated_at',
+                'sr.system_name',
+                'sr.status as system_status'
+            )
+            ->orderByDesc('cf.created_at')
+            ->get();
+
+        if ($versions->isEmpty()) {
+            abort(404, 'No configuration files found for this service');
+        }
+
+        return view('view-service-versions', compact('versions', 'serviceName'));
+    }
+
+    /**
      * View configuration file content
      */
     public function viewConfigurationFile($id)
@@ -200,6 +243,12 @@ class DashboardController extends Controller
         // Prepare download content
         $content = $config->data ?? 'No configuration data available';
         $fileName = $config->file_name ?: 'config_' . $id . '.txt';
+        
+        // Add version suffix if version exists
+        if (!empty($config->version)) {
+            $fileNameParts = pathinfo($fileName);
+            $fileName = $fileNameParts['filename'] . '-' . $config->version . '.' . ($fileNameParts['extension'] ?? 'txt');
+        }
 
         return response($content)
             ->header('Content-Type', 'text/plain')
