@@ -98,7 +98,6 @@ class SystemRegisterController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'org_id' => ['nullable', 'integer', 'min:1'],
             'system_name' => ['required', 'string', 'max:255'],
             'os_type' => ['required', 'string', 'max:100'],
             'ip_address' => ['required', 'string', 'max:45'],
@@ -120,10 +119,12 @@ class SystemRegisterController extends Controller
             return response()->json(['message' => 'PAT token required'], 401);
         }
 
+        $resolvedOrgId = $user->org_id ?? $patToken->user?->org_id;
+
         $system = SystemRegister::create([
             'pat_token_id' => $patToken->id,
             'user_id' => $user->id,
-            'org_id' => $data['org_id'] ?? null,
+            'org_id' => $resolvedOrgId,
             'system_name' => $data['system_name'],
             'os_type' => $data['os_type'],
             'ip_address' => $data['ip_address'],
@@ -156,7 +157,10 @@ class SystemRegisterController extends Controller
      */
     public function deregister(Request $request)
     {
-        $systemId = $request->query('systemId') ?? $request->input('systemId');
+        $systemId = $request->query('systemId')
+            ?? $request->input('systemId')
+            ?? $request->query('system_id')
+            ?? $request->input('system_id');
         
         if (!$systemId) {
             return response()->json([
@@ -189,6 +193,154 @@ class SystemRegisterController extends Controller
         return response()->json([
             'message' => 'System deregistered successfully',
             'system_id' => $system->id,
+            'status' => $system->status,
+        ], 200);
+    }
+
+    /**
+     * Force deregister any system - change status to inactive
+     * Requires bearer token authentication
+     */
+    public function deregisterForce(Request $request)
+    {
+        $systemId = $request->query('systemId')
+            ?? $request->input('systemId')
+            ?? $request->query('system_id')
+            ?? $request->input('system_id');
+        
+        if (!$systemId) {
+            return response()->json([
+                'message' => 'systemId is required'
+            ], 400);
+        }
+
+        $user = $request->user();
+        
+        // Find the system by ID
+        $system = SystemRegister::find($systemId);
+
+        if (!$system) {
+            return response()->json([
+                'message' => 'System not found'
+            ], 404);
+        }
+
+        // Force deregister - no ownership check required
+        $system->status = 'inactive';
+        $system->save();
+
+        return response()->json([
+            'message' => 'System force deregistered successfully',
+            'deregistered_by_user_id' => $user->id,
+            'system_id' => $system->id,
+            'system_user_id' => $system->user_id,
+            'status' => $system->status,
+        ], 200);
+    }
+
+    /**
+     * Reactivate a system using PAT token - change status from inactive to active
+     * User-level endpoint: can only reactivate their own systems
+     */
+    public function reactive(Request $request)
+    {
+        $systemId = $request->query('systemId')
+            ?? $request->input('systemId')
+            ?? $request->query('system_id')
+            ?? $request->input('system_id');
+        
+        if (!$systemId) {
+            return response()->json([
+                'message' => 'systemId is required'
+            ], 400);
+        }
+        
+        $user = $request->user();
+        
+        // Find the system by ID
+        $system = SystemRegister::find($systemId);
+
+        if (!$system) {
+            return response()->json([
+                'message' => 'System not found'
+            ], 404);
+        }
+
+        // Verify the system belongs to the authenticated user
+        if ($system->user_id != $user->id) {
+            return response()->json([
+                'message' => 'Unauthorized to reactivate this system'
+            ], 403);
+        }
+
+        // Check if system is already active
+        if ($system->status === 'active') {
+            return response()->json([
+                'message' => 'System is already active',
+                'system_id' => $system->id,
+                'status' => $system->status,
+            ], 200);
+        }
+
+        // Update the status to active
+        $system->status = 'active';
+        $system->save();
+
+        return response()->json([
+            'message' => 'System reactivated successfully',
+            'system_id' => $system->id,
+            'status' => $system->status,
+        ], 200);
+    }
+
+    /**
+     * Force reactivate any system - change status from inactive to active
+     * ADMIN-LEVEL endpoint: requires session bearer token, no ownership check
+     */
+    public function reactiveForce(Request $request)
+    {
+        $systemId = $request->query('systemId')
+            ?? $request->input('systemId')
+            ?? $request->query('system_id')
+            ?? $request->input('system_id');
+        
+        if (!$systemId) {
+            return response()->json([
+                'message' => 'systemId is required'
+            ], 400);
+        }
+
+        $user = $request->user();
+        
+        // Find the system by ID
+        $system = SystemRegister::find($systemId);
+
+        if (!$system) {
+            return response()->json([
+                'message' => 'System not found'
+            ], 404);
+        }
+
+        // Check if system is already active
+        if ($system->status === 'active') {
+            return response()->json([
+                'message' => 'System is already active',
+                'reactivated_by_user_id' => $user->id,
+                'system_id' => $system->id,
+                'system_user_id' => $system->user_id,
+                'status' => $system->status,
+            ], 200);
+        }
+
+        // Force reactivate - no ownership check required
+        $system->status = 'active';
+        $system->save();
+
+        return response()->json([
+            'message' => 'System force reactivated successfully',
+            'reactivated_by_user_id' => $user->id,
+            'system_id' => $system->id,
+            'system_user_id' => $system->user_id,
             'status' => $system->status,
         ], 200);
     }

@@ -14,7 +14,9 @@
 4. [Token Validation](#token-validation)
 5. [System Registration](#system-registration)
 6. [System Deregistration](#system-deregistration)
-7. [Configuration File Management](#configuration-file-management)
+7. [System Reactivation](#system-reactivation)
+8. [Admin APIs](#admin-apis)
+9. [Configuration File Management](#configuration-file-management)
   - [Upload](#upload-configuration-file)
   - [List](#list-configuration-files)
   - [Filter by System & Hash](#list-configuration-files-by-system-and-validation-hash)
@@ -22,12 +24,12 @@
   - [Download by ID](#download-configuration-file-by-id)
   - [Raw Data](#get-configuration-file-raw-data)
   - [Delete](#delete-configuration-file)
-8. [File Operations](#file-operations)
-9. [Error Responses](#error-responses)
-10. [Authentication Notes](#authentication-notes)
-11. [Rate Limiting](#rate-limiting)
-12. [Data Storage](#data-storage)
-13. [Changelog](#changelog)
+10. [File Operations](#file-operations)
+11. [Error Responses](#error-responses)
+12. [Authentication Notes](#authentication-notes)
+13. [Rate Limiting](#rate-limiting)
+14. [Data Storage](#data-storage)
+15. [Changelog](#changelog)
 
 ---
 
@@ -103,14 +105,26 @@ Content-Type: application/json
 ```json
 {
   "message": "Login successful",
-  "session_token": "bearer_token_value",
+  "access_token": "bearer_token_value",
   "user": {
     "id": 1,
     "name": "John Doe",
-    "email": "john@example.com"
+    "email": "john@example.com",
+    "org_id": 200,
+    "rbac_id": 102,
+    "status": "active"
   }
 }
 ```
+
+**Response Fields**:
+- `access_token`: Session bearer token for authentication
+- `user.id`: User ID
+- `user.name`: User's full name
+- `user.email`: User's email address
+- `user.org_id`: Organization ID the user belongs to
+- `user.rbac_id`: Role-Based Access Control ID (100=Super Admin, 101=Admin, 102=User)
+- `user.status`: Account status (active/inactive)
 
 **Example**:
 ```bash
@@ -634,6 +648,7 @@ Authorization: Bearer {token}
     "name": "Nitin",
     "email": "nitin@gmail.com",
     "dob": "1992-01-01T00:00:00.000000Z",
+    "org_id": 200,
     "status": "active",
     "created_at": "2026-02-27T20:04:38.000000Z",
     "updated_at": "2026-02-27T20:04:38.000000Z"
@@ -655,6 +670,15 @@ Authorization: Bearer {token}
   "message": "Invalid or expired token",
   "is_valid": false,
   "error": "Token not found or has expired"
+}
+```
+
+**Response** (401 - Revoked/Inactive Token):
+```json
+{
+  "message": "Token is revoked or inactive",
+  "is_valid": false,
+  "token_status": "revoked"
 }
 ```
 
@@ -703,6 +727,7 @@ Content-Type: application/json
     "name": "Nitin",
     "email": "nitin@gmail.com",
     "dob": "1992-01-01T00:00:00.000000Z",
+    "org_id": 200,
     "status": "active",
     "created_at": "2026-02-27T20:04:38.000000Z",
     "updated_at": "2026-02-27T20:04:38.000000Z"
@@ -733,6 +758,15 @@ Content-Type: application/json
   "message": "Invalid or expired token",
   "is_valid": false,
   "error": "Token not found or has expired"
+}
+```
+
+**Response** (401 - Revoked/Inactive Token):
+```json
+{
+  "message": "Token is revoked or inactive",
+  "is_valid": false,
+  "token_status": "revoked"
 }
 ```
 
@@ -774,12 +808,13 @@ Content-Type: application/json
   "system_name": "Production Server",
   "os_type": "Linux",
   "ip_address": "192.168.1.100",
-  "org_id": 1,
   "tags": "prod, critical, backend",
   "metadata": "{\"cpu\": \"x86_64\", \"hostname\": \"prod-server\"}",
   "validation_hash": "11111111111111111111111111111111111111111111111111"
 }
 ```
+
+**Note**: The `org_id` field is automatically populated on the server-side from the authenticated user's organization. It is not accepted from the request body for security reasons.
 
 **Response** (201):
 ```json
@@ -1015,6 +1050,255 @@ curl -X POST "http://localhost:8002/system-deregister" \
     "systemId": 1828058512
   }'
 ```
+
+---
+
+### Force Deregister System (Admin)
+
+**Endpoint**: `POST /system-deregister-force`
+
+**Description**: Force deregister any system by changing its status from `active` to `inactive`. This endpoint requires session token authentication and does not validate system ownership. Intended for administrative use.
+
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
+**Query Parameters** or **Request Body**:
+- `systemId` (required, integer): The system ID to force deregister
+
+**Response** (200):
+```json
+{
+  "message": "System deregistered successfully",
+  "system_id": 4057010410,
+  "status": "inactive",
+  "deregistered_by_user_id": 1010
+}
+```
+
+**Error Responses**:
+- `400`: systemId is required
+- `401`: Unauthorized (invalid or missing session token)
+- `404`: System not found
+
+**Example** (via query parameter):
+```bash
+curl -X POST "http://localhost:8002/system-deregister-force?systemId=4057010410" \
+  -H "Authorization: Bearer {session_token}" \
+  -H "Content-Type: application/json"
+```
+
+**Example** (via request body):
+```bash
+curl -X POST "http://localhost:8002/system-deregister-force" \
+  -H "Authorization: Bearer {session_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemId": 4057010410
+  }'
+```
+
+**Security Notes**:
+- Requires session bearer token (not PAT token)
+- Does not validate system ownership - can deregister any system
+- Records the user ID who performed the force deregistration
+- Intended for administrative/support use cases
+
+---
+
+## System Reactivation
+
+Reactivate systems and change their status from inactive to active.
+
+### Reactive System (User Level)
+
+**Endpoint**: `POST /system-reactive`
+
+**Description**: Reactivate a system by changing its status from `inactive` to `active`. Only the system owner (authenticated user) can reactivate their own systems.
+
+**Headers**:
+```
+Authorization: Bearer {pat_token}
+Content-Type: application/json
+```
+
+**Query Parameters** or **Request Body**:
+- `systemId` (required, integer): The system ID to reactivate
+
+**Response** (200):
+```json
+{
+  "message": "System reactivated successfully",
+  "system_id": 1828058512,
+  "status": "active"
+}
+```
+
+**Error Responses**:
+- `400`: systemId is required
+- `401`: Unauthorized (invalid or missing PAT token)
+- `403`: Unauthorized (system belongs to another user)
+- `404`: System not found
+
+**Example** (via query parameter):
+```bash
+curl -X POST "http://localhost:8002/system-reactive?systemId=1828058512" \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -H "Content-Type: application/json"
+```
+
+**Example** (via request body):
+```bash
+curl -X POST "http://localhost:8002/system-reactive" \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemId": 1828058512
+  }'
+```
+
+---
+
+## Admin APIs
+
+Admin-level endpoints that require session token authentication and operate with elevated privileges. These endpoints do not validate resource ownership and are intended for administrative/support operations.
+
+### Force Reactivate System (Admin)
+
+**Endpoint**: `POST /system-reactivate-force` or `GET /system-reactivate-force`
+
+**Description**: Force reactivate any system by changing its status from `inactive` to `active`. This endpoint requires session token authentication and does not validate system ownership. Intended for administrative use.
+
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
+**Query Parameters** or **Request Body**:
+- `systemId` (required, integer): The system ID to force reactivate
+
+**Response** (200): When system was successfully reactivated
+```json
+{
+  "message": "System force reactivated successfully",
+  "reactivated_by_user_id": 1010,
+  "system_id": 4057010410,
+  "system_user_id": 42,
+  "status": "active"
+}
+```
+
+**Response** (200): When system is already active
+```json
+{
+  "message": "System is already active",
+  "reactivated_by_user_id": 1010,
+  "system_id": 4057010410,
+  "system_user_id": 42,
+  "status": "active"
+}
+```
+
+**Error Responses**:
+- `400`: systemId is required
+- `401`: Unauthorized (invalid or missing session token)
+- `404`: System not found
+
+**Example** (via query parameter with POST):
+```bash
+curl -X POST "http://localhost:8002/system-reactivate-force?systemId=4057010410" \
+  -H "Authorization: Bearer {session_token}" \
+  -H "Content-Type: application/json"
+```
+
+**Example** (via query parameter with GET):
+```bash
+curl -X GET "http://localhost:8002/system-reactivate-force?systemId=4057010410" \
+  -H "Authorization: Bearer {session_token}"
+```
+
+**Example** (via request body):
+```bash
+curl -X POST "http://localhost:8002/system-reactivate-force" \
+  -H "Authorization: Bearer {session_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemId": 4057010410
+  }'
+```
+
+**Security Notes**:
+- Requires session bearer token (not PAT token)
+- Does not validate system ownership - can reactivate any system
+- Records the admin user ID who performed the force reactivation
+- Intended for administrative/support use cases
+- Supports both POST and GET HTTP methods
+
+---
+
+### Force Deregister System (Admin)
+
+**Endpoint**: `POST /system-deregister-force` or `GET /system-deregister-force`
+
+**Description**: Force deregister any system by changing its status from `active` to `inactive`. This endpoint requires session token authentication and does not validate system ownership. Intended for administrative use.
+
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
+**Query Parameters** or **Request Body**:
+- `systemId` (required, integer): The system ID to force deregister
+
+**Response** (200):
+```json
+{
+  "message": "System force deregistered successfully",
+  "deregistered_by_user_id": 1010,
+  "system_id": 4057010410,
+  "system_user_id": 42,
+  "status": "inactive"
+}
+```
+
+**Error Responses**:
+- `400`: systemId is required
+- `401`: Unauthorized (invalid or missing session token)
+- `404`: System not found
+
+**Example** (via query parameter with POST):
+```bash
+curl -X POST "http://localhost:8002/system-deregister-force?systemId=4057010410" \
+  -H "Authorization: Bearer {session_token}" \
+  -H "Content-Type: application/json"
+```
+
+**Example** (via query parameter with GET):
+```bash
+curl -X GET "http://localhost:8002/system-deregister-force?systemId=4057010410" \
+  -H "Authorization: Bearer {session_token}"
+```
+
+**Example** (via request body):
+```bash
+curl -X POST "http://localhost:8002/system-deregister-force" \
+  -H "Authorization: Bearer {session_token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemId": 4057010410
+  }'
+```
+
+**Security Notes**:
+- Requires session bearer token (not PAT token)
+- Does not validate system ownership - can deregister any system
+- Records the user ID who performed the force deregistration
+- Intended for administrative/support use cases
+- Supports both POST and GET HTTP methods
 
 ---
 
@@ -1471,3 +1755,38 @@ curl -X GET http://localhost:8002/files/1 \
 - Enhanced security: download by ID now requires system_id validation
 - Comprehensive API documentation reorganized by feature
 - File storage location and database tables documentation
+
+**Version 1.2** - March 7, 2026
+- **Enhanced Login Response**: POST /auth/login now includes `org_id`, `rbac_id`, and `status` in user object
+- **Token Validation Security**: Both GET and POST /auth/validate-token now check token status
+  - Revoked or inactive tokens return 401 error
+  - Added `org_id` field to user object in validation response
+  - Middleware now validates token status before processing requests
+- **System Registration Security**: POST /system-register now auto-resolves `org_id` server-side
+  - Removed `org_id` from accepted request parameters
+  - Organization ID populated from authenticated user context
+  - Prevents client manipulation of organization assignment
+- **New Admin Endpoint**: POST /system-deregister-force
+  - Force deregister any system regardless of ownership
+  - Requires session token authentication (not PAT)
+  - Records deregistering user ID for audit trail
+  - Intended for administrative/support operations
+
+**Version 1.3** - March 7, 2026
+- **New User Endpoint**: POST/GET /system-reactive
+  - User-level endpoint to reactivate their own inactive systems
+  - Requires PAT token authentication
+  - Validates system ownership before reactivation
+  - Returns 400 if system already active
+- **New Admin Endpoints**: POST/GET /system-reactivate-force
+  - Force reactivate any system regardless of ownership
+  - Requires session token authentication (not PAT)
+  - Records admin user ID who performed the reactivation
+  - Intended for administrative/support use cases
+- **New Admin API Section**: Dedicated section documenting all admin-level endpoints
+  - Consolidated documentation for `/system-deregister-force` and `/system-reactivate-force`
+  - Clear separation between user-level and admin-level APIs
+  - Security notes for each admin endpoint
+- **API Organization**: Reorganized documentation with explicit Admin APIs section
+  - User operations: /system-reactive (PAT token)
+  - Admin operations: /system-deregister-force, /system-reactivate-force (session token)

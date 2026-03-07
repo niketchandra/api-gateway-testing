@@ -98,6 +98,12 @@ class AuthController extends Controller
             'access_token' => $plainToken,
             'token_type' => 'bearer',
             'expires_at' => $session->expires_at,
+            'user' => [
+                'id' => $user->id,
+                'org_id' => $user->org_id,
+                'rbac_id' => $user->rbac_id,
+                'status' => $user->status,
+            ],
             'message' => 'Session token is temporary. Use it to create permanent PAT tokens.',
         ]);
     }

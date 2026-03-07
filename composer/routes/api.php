@@ -45,3 +45,15 @@ Route::get('/system-register/user/{userId}', [SystemRegisterController::class, '
 
 // System deregistration - requires PAT token only
 Route::post('/system-deregister', [SystemRegisterController::class, 'deregister'])->middleware('auth.pat');
+
+// System reactivation - requires PAT token only
+Route::post('/system-reactive', [SystemRegisterController::class, 'reactive'])->middleware('auth.pat');
+Route::get('/system-reactive', [SystemRegisterController::class, 'reactive'])->middleware('auth.pat');
+
+// Force system deregistration - requires session token (bearer token) - ADMIN API
+Route::post('/system-deregister-force', [SystemRegisterController::class, 'deregisterForce'])->middleware('auth.session');
+Route::get('/system-deregister-force', [SystemRegisterController::class, 'deregisterForce'])->middleware('auth.session');
+
+// Force system reactivation - requires session token (bearer token) - ADMIN API
+Route::post('/system-reactivate-force', [SystemRegisterController::class, 'reactiveForce'])->middleware('auth.session');
+Route::get('/system-reactivate-force', [SystemRegisterController::class, 'reactiveForce'])->middleware('auth.session');

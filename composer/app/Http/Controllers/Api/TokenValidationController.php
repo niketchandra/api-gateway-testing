@@ -34,6 +34,15 @@ class TokenValidationController extends Controller
             ], 401);
         }
 
+        // Check token status (active/revoked)
+        if (($patToken->status ?? 'active') !== 'active') {
+            return response()->json([
+                'message' => 'Token is revoked or inactive',
+                'is_valid' => false,
+                'token_status' => $patToken->status,
+            ], 401);
+        }
+
         // Check if token has expired
         if ($patToken->expires_at && $patToken->expires_at->isPast()) {
             return response()->json([
@@ -71,6 +80,7 @@ class TokenValidationController extends Controller
             'is_valid' => true,
             'user' => [
                 'id' => $user->id,
+                'org_id' => $user->org_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'dob' => $user->dob,
@@ -120,6 +130,15 @@ class TokenValidationController extends Controller
             ], 401);
         }
 
+        // Check token status (active/revoked)
+        if (($patToken->status ?? 'active') !== 'active') {
+            return response()->json([
+                'message' => 'Token is revoked or inactive',
+                'is_valid' => false,
+                'token_status' => $patToken->status,
+            ], 401);
+        }
+
         // Check if token has expired
         if ($patToken->expires_at && $patToken->expires_at->isPast()) {
             return response()->json([
@@ -157,6 +176,7 @@ class TokenValidationController extends Controller
             'is_valid' => true,
             'user' => [
                 'id' => $user->id,
+                'org_id' => $user->org_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'dob' => $user->dob,

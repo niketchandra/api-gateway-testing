@@ -95,6 +95,20 @@ services:
         strip_path: false
         methods:
           - POST
+      - name: system-reactive-route
+        paths:
+          - /system-reactive
+        strip_path: false
+        methods:
+          - POST
+          - GET
+      - name: system-deregister-force-route
+        paths:
+          - /system-deregister-force
+        strip_path: false
+        methods:
+          - POST
+          - GET
       - name: files-upload-route
         paths:
           - /files/upload
@@ -126,3 +140,36 @@ services:
         methods:
           - GET
           - DELETE
+
+  - name: force-deregister-api-prefix-service
+    url: http://api:8000
+    routes:
+      - name: force-deregister-api-prefix-route
+        paths:
+          - /api/system-deregister-force
+        strip_path: false
+        methods:
+          - POST
+          - GET
+
+  - name: force-reactivate-api-prefix-service
+    url: http://api:8000
+    routes:
+      - name: force-reactivate-api-prefix-route
+        paths:
+          - /api/system-reactivate-force
+        strip_path: false
+        methods:
+          - POST
+          - GET
+
+  - name: reactive-api-prefix-service
+    url: http://api:8000
+    routes:
+      - name: reactive-api-prefix-route
+        paths:
+          - /api/system-reactive
+        strip_path: false
+        methods:
+          - POST
+          - GET

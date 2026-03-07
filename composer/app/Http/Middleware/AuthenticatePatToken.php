@@ -32,6 +32,10 @@ class AuthenticatePatToken
             return response()->json(['message' => 'Invalid PAT token'], 401);
         }
 
+        if (($patToken->status ?? 'active') !== 'active') {
+            return response()->json(['message' => 'PAT token is revoked or inactive'], 401);
+        }
+
         // Check expiration
         if ($patToken->expires_at && $patToken->expires_at->isPast()) {
             return response()->json(['message' => 'PAT token has expired'], 401);
