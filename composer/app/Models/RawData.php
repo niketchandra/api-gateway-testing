@@ -16,10 +16,12 @@ class RawData extends Model
         'file_id',
         'user_id',
         'system_register_id',
+        'service_id',
         'file_name',
         'service_name',
         'file_data',
         'validation_hash',
+        'version',
     ];
 
     protected $casts = [
@@ -35,5 +37,10 @@ class RawData extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'service_id', 'service_id');
     }
 }

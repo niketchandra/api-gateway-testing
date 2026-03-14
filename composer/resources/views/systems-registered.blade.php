@@ -186,11 +186,11 @@
 
                         <!-- Action Button -->
                         <div>
-                            <button onclick="window.location.href='{{ route('configuration-backups', ['system_id' => $item->id]) }}'" 
+                            <button onclick="window.location.href='{{ route('systems-registered.services', ['systemId' => $item->id]) }}'" 
                                     style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;"
                                     onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)';" 
                                     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                                <i class="fas fa-folder-open"></i> View Backup Configurations
+                                <i class="fas fa-cubes"></i> View Services
                             </button>
                         </div>
                     </div>

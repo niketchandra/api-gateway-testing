@@ -89,6 +89,7 @@ class DashboardController extends Controller
             ->select(
                 'cf.id',
                 'cf.file_name',
+                'cf.service_id',
                 'cf.service_name',
                 'cf.system_register_id',
                 'cf.validation_hash',
@@ -164,6 +165,56 @@ class DashboardController extends Controller
         return view('systems-registered', compact('items'));
     }
 
+    /**
+     * List all services for a specific registered system
+     */
+    public function systemServices(Request $request, $systemId)
+    {
+        $system = DB::table('system_register')->where('id', $systemId)->first();
+
+        if (!$system) {
+            abort(404, 'System not found');
+        }
+
+        $query = DB::table('services as s')
+            ->leftJoin('configuration_files as cf', 's.service_id', '=', 'cf.service_id')
+            ->where('s.system_id', $systemId)
+            ->select(
+                's.service_id',
+                's.service_name',
+                's.system_id',
+                's.system_hash',
+                's.org_id',
+                's.share_with',
+                's.status',
+                's.created_at',
+                DB::raw('COUNT(cf.id) as config_count'),
+                DB::raw('MAX(cf.version) as latest_version')
+            )
+            ->groupBy(
+                's.service_id',
+                's.service_name',
+                's.system_id',
+                's.system_hash',
+                's.org_id',
+                's.share_with',
+                's.status',
+                's.created_at'
+            );
+
+        if ($request->filled('service_name')) {
+            $query->where('s.service_name', 'like', '%' . $request->service_name . '%');
+        }
+
+        if ($request->filled('status')) {
+            $query->where('s.status', $request->status);
+        }
+
+        $services = $query->orderByDesc('s.created_at')->get();
+
+        return view('system-services', compact('system', 'services'));
+    }
+
     public function liveServiceMonitoring()
     {
         return view('live-service-monitoring');
@@ -177,15 +228,20 @@ class DashboardController extends Controller
     /**
      * View all versions of a service configuration
      */
-    public function viewServiceVersions($serviceName)
+    public function viewServiceVersions($serviceId)
     {
-        $serviceName = urldecode($serviceName);
+        $service = DB::table('services')->where('service_id', $serviceId)->first();
+
+        if (!$service) {
+            abort(404, 'Service not found');
+        }
         
         $versions = DB::table('configuration_files as cf')
             ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id')
-            ->where('cf.service_name', $serviceName)
+            ->where('cf.service_id', $serviceId)
             ->select(
                 'cf.id',
+                'cf.service_id',
                 'cf.file_name',
                 'cf.service_name',
                 'cf.version',
@@ -203,7 +259,46 @@ class DashboardController extends Controller
             abort(404, 'No configuration files found for this service');
         }
 
-        return view('view-service-versions', compact('versions', 'serviceName'));
+        $serviceName = $service->service_name;
+        $systemId = $service->system_id;
+
+        return view('view-service-versions', compact('versions', 'serviceName', 'systemId'));
+    }
+
+    /**
+     * Backward-compatible versions view by service name
+     */
+    public function viewServiceVersionsByName($serviceName)
+    {
+        $serviceName = urldecode($serviceName);
+
+        $versions = DB::table('configuration_files as cf')
+            ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id')
+            ->where('cf.service_name', $serviceName)
+            ->select(
+                'cf.id',
+                'cf.service_id',
+                'cf.file_name',
+                'cf.service_name',
+                'cf.version',
+                'cf.validation_hash',
+                'cf.status',
+                'cf.created_at',
+                'cf.updated_at',
+                'sr.system_name',
+                'sr.status as system_status',
+                'cf.system_register_id'
+            )
+            ->orderByDesc('cf.created_at')
+            ->get();
+
+        if ($versions->isEmpty()) {
+            abort(404, 'No configuration files found for this service');
+        }
+
+        $systemId = $versions->first()->system_register_id;
+
+        return view('view-service-versions', compact('versions', 'serviceName', 'systemId'));
     }
 
     /**

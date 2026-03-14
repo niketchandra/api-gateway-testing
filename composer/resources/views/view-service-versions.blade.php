@@ -12,7 +12,7 @@
                 </h1>
                 <p style="color: #666; font-size: 14px;">View and download all configuration versions for this service</p>
             </div>
-            <a href="{{ route('configuration-backups') }}" style="background: #667eea; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+            <a href="{{ route('systems-registered.services', ['systemId' => $systemId]) }}" style="background: #667eea; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-arrow-left"></i> Back to Services
             </a>
         </div>

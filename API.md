@@ -16,7 +16,8 @@
 6. [System Deregistration](#system-deregistration)
 7. [System Reactivation](#system-reactivation)
 8. [Admin APIs](#admin-apis)
-9. [Configuration File Management](#configuration-file-management)
+9. [Services Management](#services-management)
+10. [Configuration File Management](#configuration-file-management)
   - [Upload](#upload-configuration-file)
   - [List](#list-configuration-files)
   - [Filter by System & Hash](#list-configuration-files-by-system-and-validation-hash)
@@ -24,12 +25,12 @@
   - [Download by ID](#download-configuration-file-by-id)
   - [Raw Data](#get-configuration-file-raw-data)
   - [Delete](#delete-configuration-file)
-10. [File Operations](#file-operations)
-11. [Error Responses](#error-responses)
-12. [Authentication Notes](#authentication-notes)
-13. [Rate Limiting](#rate-limiting)
-14. [Data Storage](#data-storage)
-15. [Changelog](#changelog)
+11. [File Operations](#file-operations)
+12. [Error Responses](#error-responses)
+13. [Authentication Notes](#authentication-notes)
+14. [Rate Limiting](#rate-limiting)
+15. [Data Storage](#data-storage)
+16. [Changelog](#changelog)
 
 ---
 
@@ -1302,13 +1303,61 @@ curl -X POST "http://localhost:8002/system-deregister-force" \
 
 ---
 
+## Services Management
+
+### Create Service
+
+**Endpoint**: `POST /services`
+
+**Description**: Create (or reuse) a service for the authenticated PAT user. `service_id` starts from 100.
+
+**Headers**:
+```
+Authorization: Bearer {pat_token}
+Content-Type: application/json
+```
+
+**Request Body**:
+```json
+{
+  "service_name": "testService",
+  "system_id": 1093719686,
+  "system_hash": "abc123def456",
+  "org_id": 200,
+  "share_with": "team-a"
+}
+```
+
+### List Services
+
+**Endpoint**: `GET /services`
+
+**Description**: List active services for authenticated PAT user. Optional query: `system_id`.
+
+### Get Service By ID
+
+**Endpoint**: `GET /services/{serviceId}`
+
+**Description**: Get one active service belonging to authenticated PAT user.
+
+---
+
 ## Configuration File Management
 
 ### Upload Configuration File
 
 **Endpoint**: `POST /config-files/upload`
 
-**Description**: Upload a configuration file (text, .config, .conf, .cfg)
+**Description**: Save configuration using service-first flow and upload a configuration file (text, .config, .conf, .cfg)
+
+**Config-Save Flow**:
+1. Resolve service:
+  - Use `service_id` if provided, or
+  - Create/reuse service from `service_name + system_id/system_register_id + user_id`
+2. Save metadata to `configuration_files` with `service_id`
+3. Save content to `raw_data` with same `service_id`
+
+Flow order: **Service -> configuration_files -> raw_data**
 
 **Headers**:
 ```
@@ -1318,10 +1367,18 @@ Content-Type: multipart/form-data
 
 **Request Body**:
 - Form field: `file` (multipart file, max 10MB) **[Required]**
-- Form field: `system_register_id` (string) **[Required]**
-- Form field: `service_name` (string) **[Required]**
+- Form field: `service_id` (integer) **[Optional]** - Use existing service directly
+- Form field: `system_register_id` OR `system_id` (integer) **[Required when service_id is not provided]**
+- Form field: `service_name` (string) **[Required when service_id is not provided]**
+- Form field: `system_hash` (string, max 255) **[Optional]** - Used while creating service
+- Form field: `org_id` (integer) **[Optional]** - Used while creating service
+- Form field: `share_with` (string, max 255) **[Optional]** - Used while creating service
 - Form field: `validation_hash` (string, max 255) **[Optional]** - Hash for validation purposes
 - Form field: `version` (string, max 50) **[Optional]** - Version identifier for the configuration file
+
+**Validation Rules**:
+- If `service_id` is provided, it must belong to the authenticated PAT user.
+- If `service_id` is not provided, both `system_register_id/system_id` and `service_name` are required.
 
 **Response** (201):
 ```json
@@ -1334,6 +1391,7 @@ Content-Type: multipart/form-data
     "file_location": "config_files/1/uuid-app.config",
     "file_size": 512,
     "system_register_id": "1093719686",
+    "service_id": 100,
     "service_name": "testService",
     "validation_hash": "abc123def456",
     "version": "1.0.0",
@@ -1349,6 +1407,18 @@ curl -X POST http://localhost:8002/config-files/upload \
   -F "file=@app.config" \
   -F "system_register_id=1093719686" \
   -F "service_name=testService" \
+  -F "org_id=200" \
+  -F "system_hash=abc123def456" \
+  -F "validation_hash=abc123def456" \
+  -F "version=1.0.0"
+```
+
+**Example (Using Existing service_id)**:
+```bash
+curl -X POST http://localhost:8002/config-files/upload \
+  -H "Authorization: Bearer atgla-xPyt2TeLn3TbbalkBMN" \
+  -F "file=@app.config" \
+  -F "service_id=100" \
   -F "validation_hash=abc123def456" \
   -F "version=1.0.0"
 ```
@@ -1380,6 +1450,7 @@ Authorization: Bearer {pat_token}
     {
       "id": 12,
       "file_name": "app.config",
+      "service_id": 100,
       "service_name": "testService",
       "system_register_id": 1093719686,
       "validation_hash": "abc123def456",
@@ -1732,8 +1803,10 @@ curl -X GET http://localhost:8002/files/1 \
 
 ### Configuration Files
 - **File System**: `storage/app/config_files/{user_id}/`
-- **Database**: `configuration_files` table (metadata)
-- **Raw Data**: `raw_data` table (file content)
+- **Service Master**: `services` table (service_id, service_name, system_id, system_hash, user_id, org_id, status, share_with)
+- **Database**: `configuration_files` table (metadata + service_id + version)
+- **Raw Data**: `raw_data` table (file content + service_id + version)
+- **Save Order**: `services` -> `configuration_files` -> `raw_data`
 - **Default Status**: `active`
 - **Soft Delete**: Marked as `inactive` instead of permanent deletion
 
@@ -1803,3 +1876,11 @@ curl -X GET http://localhost:8002/files/1 \
   - All configuration file list/filter endpoints return version in responses
   - Enables version tracking for configuration file management
   - Supports versioning strategies (semantic versioning, timestamps, etc.)
+
+**Version 1.5** - March 10, 2026
+- **Service-First Config Save Flow**: Added `services` table and linked flow for config persistence
+  - New service APIs: `POST /services`, `GET /services`, `GET /services/{serviceId}`
+  - `service_id` starts from 100
+  - Added `service_id` column to `configuration_files` and `raw_data`
+  - `POST /config-files/upload` now saves in sequence: `services` -> `configuration_files` -> `raw_data`
+  - Upload accepts `org_id`, `system_hash`, and `share_with` when creating/reusing service

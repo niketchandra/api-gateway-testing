@@ -24,10 +24,12 @@ Route::post('/contact', [AuthController::class, 'storeContact'])->name('contact'
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/configuration-backups', [DashboardController::class, 'configurationBackups'])->name('configuration-backups');
-    Route::get('/configuration-backups/service/{serviceName}/versions', [DashboardController::class, 'viewServiceVersions'])->name('configuration-backups.service-versions');
+    Route::get('/configuration-backups/service-name/{serviceName}/versions', [DashboardController::class, 'viewServiceVersionsByName'])->name('configuration-backups.service-versions-by-name');
+    Route::get('/configuration-backups/service/{serviceId}/versions', [DashboardController::class, 'viewServiceVersions'])->name('configuration-backups.service-versions');
     Route::get('/configuration-backups/{id}/view', [DashboardController::class, 'viewConfigurationFile'])->name('configuration-backups.view');
     Route::get('/configuration-backups/{id}/download', [DashboardController::class, 'downloadConfigurationFile'])->name('configuration-backups.download');
     Route::get('/systems-registered', [DashboardController::class, 'systemsRegistered'])->name('systems-registered');
+    Route::get('/systems-registered/{systemId}/services', [DashboardController::class, 'systemServices'])->name('systems-registered.services');
     Route::get('/live-service-monitoring', [DashboardController::class, 'liveServiceMonitoring'])->name('live-service-monitoring');
     Route::get('/vulnerabilities-identified', [DashboardController::class, 'vulnerabilitiesIdentified'])->name('vulnerabilities-identified');
     Route::get('/settings', [DashboardController::class, 'settings'])->name('settings');

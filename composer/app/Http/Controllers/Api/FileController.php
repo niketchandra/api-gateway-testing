@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ConfigurationFile;
 use App\Models\RawData;
+use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -41,13 +43,26 @@ class FileController extends Controller
                 },
             ],
             'system_register_id' => 'nullable|integer|exists:system_register,id',
+            'system_id' => 'nullable|integer|exists:system_register,id',
+            'service_id' => 'nullable|integer|exists:services,service_id',
             'service_name' => 'nullable|string|max:255',
+            'system_hash' => 'nullable|string|max:255',
+            'org_id' => 'nullable|integer',
+            'share_with' => 'nullable|string|max:255',
             'validation_hash' => 'nullable|string|max:255',
             'version' => 'nullable|string|max:50',
         ]);
 
         $user = $request->user();
         $file = $request->file('file');
+
+        $systemId = $request->input('system_register_id', $request->input('system_id'));
+
+        if (!$request->filled('service_id') && (!$systemId || !$request->filled('service_name'))) {
+            return response()->json([
+                'message' => 'service_name and system_id (or system_register_id) are required when service_id is not provided.',
+            ], 422);
+        }
         
         // Get original filename
         $originalName = $file->getClientOriginalName();
@@ -64,28 +79,79 @@ class FileController extends Controller
         
         // Read file content for raw_data table
         $fileContent = Storage::get($filePath);
-        
-        // Create configuration file record
-        $configFile = ConfigurationFile::create([
-            'user_id' => $user->id,
-            'system_register_id' => $request->input('system_register_id'),
-            'file_name' => $originalName,
-            'service_name' => $request->input('service_name'),
-            'file_location' => $filePath,
-            'validation_hash' => $request->input('validation_hash'),
-            'version' => $request->input('version'),
-        ]);
 
-        // Store raw data
-        RawData::create([
-            'file_id' => $configFile->id,
-            'user_id' => $user->id,
-            'system_register_id' => $request->input('system_register_id'),
-            'file_name' => $originalName,
-            'service_name' => $request->input('service_name'),
-            'file_data' => $fileContent,
-            'validation_hash' => $request->input('validation_hash'),
-        ]);
+        $service = null;
+
+        if ($request->filled('service_id')) {
+            $service = Service::where('service_id', $request->input('service_id'))
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->first();
+
+            if (!$service) {
+                return response()->json([
+                    'message' => 'service_id not found or does not belong to you.',
+                ], 404);
+            }
+
+            $systemId = $service->system_id;
+        }
+
+        if (!$service && $systemId && $request->filled('service_name')) {
+            $service = Service::firstOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'system_id' => $systemId,
+                    'service_name' => $request->input('service_name'),
+                ],
+                [
+                    'system_hash' => $request->input('system_hash', $request->input('validation_hash')),
+                    'org_id' => $request->input('org_id'),
+                    'share_with' => $request->input('share_with'),
+                    'status' => 'active',
+                ]
+            );
+        }
+
+        if (!$service) {
+            return response()->json([
+                'message' => 'Unable to resolve service for upload.',
+            ], 422);
+        }
+
+        $serviceName = $service->service_name;
+
+        if ($request->filled('validation_hash') && empty($service->system_hash)) {
+            $service->system_hash = $request->input('validation_hash');
+            $service->save();
+        }
+        
+        $configFile = DB::transaction(function () use ($user, $systemId, $service, $originalName, $serviceName, $filePath, $request, $fileContent) {
+            $configFile = ConfigurationFile::create([
+                'user_id' => $user->id,
+                'system_register_id' => $systemId,
+                'service_id' => $service->service_id,
+                'file_name' => $originalName,
+                'service_name' => $serviceName,
+                'file_location' => $filePath,
+                'validation_hash' => $request->input('validation_hash'),
+                'version' => $request->input('version'),
+            ]);
+
+            RawData::create([
+                'file_id' => $configFile->id,
+                'user_id' => $user->id,
+                'system_register_id' => $systemId,
+                'service_id' => $service->service_id,
+                'file_name' => $originalName,
+                'service_name' => $serviceName,
+                'file_data' => $fileContent,
+                'validation_hash' => $request->input('validation_hash'),
+                'version' => $request->input('version'),
+            ]);
+
+            return $configFile;
+        });
 
         return response()->json([
             'message' => 'Configuration file uploaded successfully',
@@ -96,6 +162,7 @@ class FileController extends Controller
                 'file_location' => $configFile->file_location,
                 'file_size' => strlen($fileContent),
                 'system_register_id' => $configFile->system_register_id,
+                'service_id' => $configFile->service_id,
                 'service_name' => $configFile->service_name,
                 'validation_hash' => $configFile->validation_hash,
                 'version' => $configFile->version,
@@ -179,6 +246,7 @@ class FileController extends Controller
                 return [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
+                    'service_id' => $file->service_id,
                     'service_name' => $file->service_name,
                     'system_register_id' => $file->system_register_id,
                     'validation_hash' => $file->validation_hash,
@@ -218,6 +286,7 @@ class FileController extends Controller
                 return [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
+                    'service_id' => $file->service_id,
                     'service_name' => $file->service_name,
                     'system_register_id' => $file->system_register_id,
                     'validation_hash' => $file->validation_hash,
@@ -329,11 +398,13 @@ class FileController extends Controller
         return response()->json([
             'file_id' => $configFile->id,
             'file_name' => $configFile->file_name,
+            'service_id' => $configFile->service_id,
             'service_name' => $configFile->service_name,
             'system_register_id' => $configFile->system_register_id,
             'raw_data' => [
                 'id' => $configFile->rawData->id,
                 'file_data' => $configFile->rawData->file_data,
+                'version' => $configFile->rawData->version,
                 'status' => $configFile->rawData->status,
                 'created_at' => $configFile->rawData->created_at,
                 'updated_at' => $configFile->rawData->updated_at,

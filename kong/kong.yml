@@ -140,6 +140,24 @@ services:
         methods:
           - GET
           - DELETE
+      - name: services-list-route
+        paths:
+          - /services
+        strip_path: false
+        methods:
+          - GET
+      - name: services-create-route
+        paths:
+          - /services
+        strip_path: false
+        methods:
+          - POST
+      - name: services-show-route
+        paths:
+          - /services/
+        strip_path: false
+        methods:
+          - GET
 
   - name: force-deregister-api-prefix-service
     url: http://api:8000

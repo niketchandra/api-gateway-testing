@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\PatTokenController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SystemRegisterController;
 use App\Http\Controllers\Api\TokenValidationController;
 use App\Http\Controllers\Api\UserController;
@@ -36,6 +37,11 @@ Route::get('/config-files/{fileId}', [FileController::class, 'downloadConfigFile
 Route::get('/config-files/download/{id}', [FileController::class, 'downloadConfigFileById'])->middleware('auth.pat');
 Route::get('/config-files/{fileId}/raw-data', [FileController::class, 'getRawData'])->middleware('auth.pat');
 Route::delete('/config-files/{fileId}', [FileController::class, 'deleteConfigFile'])->middleware('auth.pat');
+
+// Services operations - require PAT token only
+Route::post('/services', [ServiceController::class, 'store'])->middleware('auth.pat');
+Route::get('/services', [ServiceController::class, 'index'])->middleware('auth.pat');
+Route::get('/services/{serviceId}', [ServiceController::class, 'show'])->middleware('auth.pat');
 
 // System registration - requires PAT token only
 Route::post('/system-register', [SystemRegisterController::class, 'store'])->middleware('auth.pat');

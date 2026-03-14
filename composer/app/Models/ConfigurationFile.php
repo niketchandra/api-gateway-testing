@@ -14,6 +14,7 @@ class ConfigurationFile extends Model
     protected $fillable = [
         'user_id',
         'system_register_id',
+        'service_id',
         'file_name',
         'service_name',
         'file_location',
@@ -35,5 +36,10 @@ class ConfigurationFile extends Model
     public function rawData(): HasOne
     {
         return $this->hasOne(RawData::class, 'file_id');
+    }
+
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'service_id', 'service_id');
     }
 }

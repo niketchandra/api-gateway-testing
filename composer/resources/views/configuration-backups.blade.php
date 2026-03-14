@@ -63,6 +63,9 @@
                 @php
                     $isActive = strtolower($item->status) === 'active';
                     $systemActive = strtolower($item->system_status ?? 'inactive') === 'active';
+                    $versionsUrl = !empty($item->service_id)
+                        ? route('configuration-backups.service-versions', ['serviceId' => $item->service_id])
+                        : route('configuration-backups.service-versions-by-name', ['serviceName' => $item->service_name]);
                 @endphp
                 <div style="background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%); border-radius: 14px; border: 2px solid {{ $isActive ? '#4caf50' : '#f44336' }}; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;" 
                      onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 28px rgba(0,0,0,0.15)';" 
@@ -145,7 +148,7 @@
 
                         <!-- Action Buttons -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
-                            <button onclick="window.location.href='{{ route('configuration-backups.service-versions', ['serviceName' => urlencode($item->service_name)]) }}'" 
+                                    <button onclick="window.location.href='{{ $versionsUrl }}'" 
                                     style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
                                     onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)';" 
                                     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
