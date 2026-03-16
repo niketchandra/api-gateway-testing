@@ -1,0 +1,460 @@
+{
+  "info": {
+    "_postman_id": "2e2e4094-f816-49ff-a663-725434411e48",
+    "name": "AtGlance",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "262509"
+  },
+  "item": [
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Get All System-Resister",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "atgla-xPyt2TeLn3TbbalkBMN",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8002/system-register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8002",
+              "path": [
+                "system-register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sytem-Deregister",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        },
+        {
+          "name": "deregister-system-force",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "add user",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/users?name=Nitin&email=nitin@gmail.com&password=Nitin@123&dob=01-01-1992",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "users"
+          ],
+          "query": [
+            {
+              "key": "name",
+              "value": "Nitin",
+              "type": "text"
+            },
+            {
+              "key": "email",
+              "value": "nitin@gmail.com",
+              "type": "text"
+            },
+            {
+              "key": "password",
+              "value": "Nitin@123",
+              "type": "text"
+            },
+            {
+              "key": "dob",
+              "value": "01-01-1992",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get users",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/users",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "users"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User Login",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8002/auth/login?email=nitin@gmail.com&password=Nitin@123",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "auth",
+            "login"
+          ],
+          "query": [
+            {
+              "key": "email",
+              "value": "nitin@gmail.com"
+            },
+            {
+              "key": "password",
+              "value": "Nitin@123"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Add PAT Token",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "16q20yqCd06FM62w5kdrt8NmNpPVyPmhYgDfgyinGEewnSiwOyfiNRpgAqAS",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8002/auth/pat-tokens?name=my_pat1&expire_at=2099-12-31",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "auth",
+            "pat-tokens"
+          ],
+          "query": [
+            {
+              "key": "name",
+              "value": "my_pat1",
+              "type": "text"
+            },
+            {
+              "key": "expire_at",
+              "value": "2099-12-31",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get PAT Token",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "16q20yqCd06FM62w5kdrt8NmNpPVyPmhYgDfgyinGEewnSiwOyfiNRpgAqAS",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/auth/pat-tokens",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "auth",
+            "pat-tokens"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "System Register",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "atgla-8sEj9KV3kB0x6I7eaSJ",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:8002/system-register?system_name=test-postman&os_type=postman&ip_address=127.0.0.1&validation_hash=1121212121212121212121212",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "system-register"
+          ],
+          "query": [
+            {
+              "key": "system_name",
+              "value": "test-postman"
+            },
+            {
+              "key": "os_type",
+              "value": "postman"
+            },
+            {
+              "key": "ip_address",
+              "value": "127.0.0.1"
+            },
+            {
+              "key": "validation_hash",
+              "value": "1121212121212121212121212",
+              "type": "text"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get System-Resister by User",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "atgla-xPyt2TeLn3TbbalkBMN",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/system-register/user/3 ",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "system-register",
+            "user",
+            "3 "
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get System-Resister by PAT",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "atgla-xPyt2TeLn3TbbalkBMN",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/system-register/pat/1 ",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "system-register",
+            "pat",
+            "1 "
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Save Config File",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "atgla-xPyt2TeLn3TbbalkBMN",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "uuid": "456cdcde-8b18-445f-830f-8aa635f55f9c",
+              "src": "/C:/Users/niket/Desktop/apache2.config"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8002/config-files/upload",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "config-files",
+            "upload"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Validate PAT",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "atgla-xPyt2TeLn3TbbalkBMN",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/auth/validate-token",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8002",
+          "path": [
+            "auth",
+            "validate-token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "show-config",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    },
+    {
+      "name": "Export-Config",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    },
+    {
+      "name": "User Logout",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    }
+  ]
+}
