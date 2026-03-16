@@ -7,7 +7,7 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "--password="]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -37,6 +37,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CACHE_DRIVER: redis
+      CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     ports:
       - "8000:8000"
@@ -64,6 +65,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CACHE_DRIVER: redis
+      CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     depends_on:
       mysql:

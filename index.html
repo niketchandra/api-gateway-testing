@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Infra Console CLI</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+    margin:0;
+    font-family:'Fira Code', monospace;
+    background:#0d1117;
+    color:#00ff9c;
+}
+
+/* HEADER */
+
+.header{
+    height:60px;
+    background:#161b22;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 20px;
+    border-bottom:1px solid #30363d;
+}
+
+.logo{
+    font-size:20px;
+    font-weight:500;
+    color:#58a6ff;
+}
+
+.profile{
+    color:#8b949e;
+}
+
+/* LAYOUT */
+
+.container{
+    display:flex;
+    height:calc(100vh - 60px);
+}
+
+/* SIDEBAR */
+
+.sidebar{
+    width:260px;
+    background:#161b22;
+    border-right:1px solid #30363d;
+    padding:20px;
+}
+
+.sidebar h3{
+    color:#58a6ff;
+    margin-top:0;
+}
+
+.sidebar input{
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+    background:#0d1117;
+    border:1px solid #30363d;
+    color:white;
+}
+
+.sidebar button{
+    width:100%;
+    padding:10px;
+    background:#238636;
+    border:none;
+    color:white;
+    cursor:pointer;
+    margin-bottom:10px;
+}
+
+.sidebar button:hover{
+    background:#2ea043;
+}
+
+.register{
+    background:#1f6feb !important;
+}
+
+.register:hover{
+    background:#388bfd !important;
+}
+
+/* TERMINAL */
+
+.terminal{
+    flex:1;
+    background:#000;
+    padding:20px;
+    overflow-y:auto;
+}
+
+.terminal-window{
+    max-width:900px;
+}
+
+.line{
+    margin-bottom:6px;
+}
+
+.prompt{
+    color:#58a6ff;
+}
+
+input.terminal-input{
+    background:none;
+    border:none;
+    outline:none;
+    color:#00ff9c;
+    font-family:'Fira Code', monospace;
+    width:80%;
+}
+
+/* blinking cursor */
+
+.cursor{
+    display:inline-block;
+    width:10px;
+    background:#00ff9c;
+    animation:blink 1s infinite;
+}
+
+@keyframes blink{
+    50%{opacity:0}
+}
+
+.footer{
+    position:absolute;
+    bottom:5px;
+    right:10px;
+    color:#6e7681;
+    font-size:12px;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+
+<div class="header">
+
+<div class="logo">🚀 Infra CLI Console</div>
+
+<div class="profile">
+User: Guest
+</div>
+
+</div>
+
+<div class="container">
+
+<!-- SIDEBAR -->
+
+<div class="sidebar">
+
+<h3>Authentication</h3>
+
+<input type="text" placeholder="Email">
+
+<input type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<button class="register">Register</button>
+
+<p style="color:#8b949e;font-size:12px">
+Forgot password?
+</p>
+
+</div>
+
+
+<!-- TERMINAL -->
+
+<div class="terminal">
+
+<div class="terminal-window" id="terminal">
+
+<div class="line">$ Welcome to Infra CLI</div>
+<div class="line">$ Type <span style="color:#58a6ff">help</span> to begin</div>
+
+</div>
+
+<div class="line">
+<span class="prompt">$ </span>
+<input class="terminal-input" id="cmd" autofocus onkeydown="runCommand(event)">
+<span class="cursor"></span>
+</div>
+
+</div>
+
+</div>
+
+<div class="footer">
+Infra CLI v1.0
+</div>
+
+<script>
+
+function login(){
+
+addLine("Authentication successful");
+addLine("Type 'server list'");
+
+}
+
+function runCommand(e){
+
+if(e.key === "Enter"){
+
+let input = document.getElementById("cmd")
+let cmd = input.value
+
+addLine("$ " + cmd)
+
+processCommand(cmd)
+
+input.value=""
+
+}
+
+}
+
+function processCommand(cmd){
+
+switch(cmd){
+
+case "help":
+addLine("Available commands:")
+addLine("server list")
+addLine("server status")
+addLine("clear")
+break
+
+case "server list":
+addLine("server-1   running")
+addLine("server-2   running")
+addLine("server-3   stopped")
+break
+
+case "server status":
+addLine("All systems operational")
+break
+
+case "clear":
+document.getElementById("terminal").innerHTML=""
+break
+
+default:
+addLine("Command not found")
+
+}
+
+}
+
+function addLine(text){
+
+let term = document.getElementById("terminal")
+
+let line = document.createElement("div")
+line.className="line"
+line.innerText=text
+
+term.appendChild(line)
+
+term.scrollTop = term.scrollHeight
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,263 @@
+@extends('app')
+
+@section('title', 'Manage Users - AtGlance')
+
+@section('dashboard-content')
+<div style="padding: 40px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="font-size:28px; color:#111827;">Manage Users</h1>
+        <a href="{{ route('admin.dashboard') }}" style="text-decoration:none; color:#4f46e5;">← Back to Dashboard</a>
+    </div>
+
+    @if(session('success'))
+        <div style="padding:12px; border-radius:8px; background:#dcfce7; color:#166534; margin-bottom:16px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div style="padding:12px; border-radius:8px; background:#fee2e2; color:#991b1b; margin-bottom:16px;">
+            <ul style="margin-left:16px;">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <div style="background:white; border-radius:10px; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.1); margin-bottom:16px;">
+        <h2 style="font-size:18px; margin-bottom:10px; color:#111827;">Admin User Capabilities</h2>
+        <p style="color:#6b7280; margin-bottom:12px;">Admins can use all user functionalities including PAT token management, system registration workflows, and configuration backups.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="{{ route('settings') }}" style="display:inline-block; background:#111827; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">PAT Tokens & User Settings</a>
+            <a href="{{ route('systems-registered') }}" style="display:inline-block; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">Systems Registered</a>
+            <a href="{{ route('configuration-backups') }}" style="display:inline-block; background:#0ea5e9; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">Configuration Backups</a>
+        </div>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+        <button type="button" id="openRegisterUserModal" style="display:inline-block; background:#16a34a; color:white; text-decoration:none; border:none; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Register User</button>
+    </div>
+
+    <div id="registerUserModal" style="display:none; position:fixed; inset:0; background:rgba(17,24,39,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; border-radius:12px; width:min(760px, 100%); max-height:90vh; overflow:auto; box-shadow:0 16px 40px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 20px; border-bottom:1px solid #e5e7eb;">
+                <h2 style="font-size:20px; color:#111827; font-weight:700;">Register User</h2>
+                <button type="button" id="closeRegisterUserModal" style="background:transparent; border:none; font-size:20px; color:#6b7280; cursor:pointer;">&times;</button>
+            </div>
+
+            <form method="POST" action="{{ route('admin.users.store') }}" style="padding:20px;">
+                @csrf
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Username</label>
+                        <input type="text" name="username" value="{{ old('username') }}" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Email</label>
+                        <input type="email" name="email" value="{{ old('email') }}" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">First Name</label>
+                        <input type="text" name="first_name" value="{{ old('first_name') }}" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Last Name</label>
+                        <input type="text" name="last_name" value="{{ old('last_name') }}" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Password</label>
+                        <input type="password" name="password" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Confirm Password</label>
+                        <input type="password" name="password_confirmation" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Role</label>
+                    <select name="role" required style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px; background:white;">
+                        <option value="user" {{ old('role') === 'user' ? 'selected' : '' }}>User</option>
+                        <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" id="cancelRegisterUserModal" style="display:inline-block; background:#e5e7eb; color:#111827; border:none; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Cancel</button>
+                    <button type="submit" style="display:inline-block; background:#16a34a; color:white; text-decoration:none; border:none; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div style="background:white; border-radius:10px; padding:24px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+        <div class="tab-buttons" style="margin-bottom:16px;">
+            <button type="button" class="tab-btn active" data-user-tab="users">Users</button>
+            <button type="button" class="tab-btn" data-user-tab="admins">Admin</button>
+        </div>
+
+        <div class="tab-content active" id="users-list-tab" style="display:block;">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">User ID</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Name</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Email</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Systems Registered</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Services</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Configs</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Status</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($users as $item)
+                        <tr style="border-bottom:1px solid #f3f4f6;">
+                            <td style="padding:12px;">{{ $item->id }}</td>
+                            <td style="padding:12px;">{{ $item->name }}</td>
+                            <td style="padding:12px;">{{ $item->email }}</td>
+                            <td style="padding:12px;">{{ $item->system_count }}</td>
+                            <td style="padding:12px;">{{ $item->service_count }}</td>
+                            <td style="padding:12px;">{{ $item->configuration_count }}</td>
+                            <td style="padding:12px;">
+                                @php $isActive = strtolower((string) $item->status) === 'active'; @endphp
+                                <span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background:{{ $isActive ? '#dcfce7' : '#fee2e2' }}; color:{{ $isActive ? '#166534' : '#991b1b' }};">
+                                    {{ ucfirst($item->status ?? 'unknown') }}
+                                </span>
+                            </td>
+                            <td style="padding:12px;">
+                                <a href="{{ route('admin.users.profile', $item->id) }}" style="display:inline-block; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">View User Profile</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" style="padding:16px; color:#6b7280;">No users found.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            <div style="margin-top:16px;">
+                {{ $users->links() }}
+            </div>
+        </div>
+
+        <div class="tab-content" id="admins-list-tab" style="display:none;">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Admin ID</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Name</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Email</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Systems Registered</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Services</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Configs</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Status</th>
+                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($adminUsers as $item)
+                        <tr style="border-bottom:1px solid #f3f4f6;">
+                            <td style="padding:12px;">{{ $item->id }}</td>
+                            <td style="padding:12px;">{{ $item->name }}</td>
+                            <td style="padding:12px;">{{ $item->email }}</td>
+                            <td style="padding:12px;">{{ $item->system_count }}</td>
+                            <td style="padding:12px;">{{ $item->service_count }}</td>
+                            <td style="padding:12px;">{{ $item->configuration_count }}</td>
+                            <td style="padding:12px;">
+                                @php $isActive = strtolower((string) $item->status) === 'active'; @endphp
+                                <span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background:{{ $isActive ? '#dcfce7' : '#fee2e2' }}; color:{{ $isActive ? '#166534' : '#991b1b' }};">
+                                    {{ ucfirst($item->status ?? 'unknown') }}
+                                </span>
+                            </td>
+                            <td style="padding:12px;">
+                                <a href="{{ route('admin.users.profile', $item->id) }}" style="display:inline-block; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">View User Profile</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" style="padding:16px; color:#6b7280;">No admins found.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            <div style="margin-top:16px;">
+                {{ $adminUsers->links() }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabButtons = document.querySelectorAll('[data-user-tab]');
+        const usersTab = document.getElementById('users-list-tab');
+        const adminsTab = document.getElementById('admins-list-tab');
+        const registerModal = document.getElementById('registerUserModal');
+        const openRegisterModalButton = document.getElementById('openRegisterUserModal');
+        const closeRegisterModalButton = document.getElementById('closeRegisterUserModal');
+        const cancelRegisterModalButton = document.getElementById('cancelRegisterUserModal');
+
+        tabButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                const selectedTab = button.getAttribute('data-user-tab');
+
+                tabButtons.forEach(function (btn) {
+                    btn.classList.remove('active');
+                });
+
+                button.classList.add('active');
+
+                if (selectedTab === 'admins') {
+                    usersTab.style.display = 'none';
+                    adminsTab.style.display = 'block';
+                } else {
+                    usersTab.style.display = 'block';
+                    adminsTab.style.display = 'none';
+                }
+            });
+        });
+
+        if (openRegisterModalButton && registerModal) {
+            openRegisterModalButton.addEventListener('click', function () {
+                registerModal.style.display = 'flex';
+            });
+        }
+
+        if (closeRegisterModalButton && registerModal) {
+            closeRegisterModalButton.addEventListener('click', function () {
+                registerModal.style.display = 'none';
+            });
+        }
+
+        if (cancelRegisterModalButton && registerModal) {
+            cancelRegisterModalButton.addEventListener('click', function () {
+                registerModal.style.display = 'none';
+            });
+        }
+
+        if (registerModal) {
+            registerModal.addEventListener('click', function (event) {
+                if (event.target === registerModal) {
+                    registerModal.style.display = 'none';
+                }
+            });
+        }
+
+        @if($errors->any())
+            if (registerModal) {
+                registerModal.style.display = 'flex';
+            }
+        @endif
+    });
+</script>
+@endsection

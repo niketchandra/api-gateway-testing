@@ -469,7 +469,11 @@
         <!-- LEFT SIDEBAR (20%) -->
         <div class="sidebar">
             <div class="sidebar-logo">
-                <i class="fas fa-gate"></i> AtGlance
+                @if(!empty($siteLogoUrl))
+                    <img src="{{ $siteLogoUrl }}" alt="AtGlance Logo" style="max-width: 140px; max-height: 48px; object-fit: contain;">
+                @else
+                    <i class="fas fa-gate"></i> AtGlance
+                @endif
             </div>
 
             <div class="form-container" id="authForm">
@@ -605,6 +609,20 @@
                         <a href="{{ route('profile') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
                             <i class="fas fa-user-circle"></i> Profile
                         </a>
+                        @if(auth()->check() && in_array((int) auth()->user()->rbac_id, [100, 101], true))
+                        <a href="{{ route('admin.users') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-users"></i> Manage Users
+                        </a>
+                        <a href="{{ route('admin.settings') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-sliders-h"></i> Site Setting
+                        </a>
+                        <a href="{{ route('systems-registered') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-server"></i> Systems Registered
+                        </a>
+                        <a href="{{ route('configuration-backups') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-file-code"></i> Configuration Backups
+                        </a>
+                        @endif
                     </nav>
                 </div>
 
@@ -624,7 +642,11 @@
                 <div class="header">
                     <div class="header-left">
                         <div class="header-logo">
-                            <i class="fas fa-gate"></i> AtGlance
+                            @if(!empty($siteLogoUrl))
+                                <img src="{{ $siteLogoUrl }}" alt="AtGlance Logo" style="max-width: 120px; max-height: 36px; object-fit: contain;">
+                            @else
+                                <i class="fas fa-gate"></i> AtGlance
+                            @endif
                         </div>
                     </div>
                     <div class="header-right">
@@ -660,8 +682,12 @@
                 <div class="welcome-section">
                     <h1 class="welcome-title">Welcome to AtGlance</h1>
                     <p class="welcome-subtitle">
-                        Your comprehensive API Gateway for seamless integration and management.<br>
-                        Build, deploy, and scale your applications with confidence.
+                        @if(!empty($siteContent))
+                            {{ $siteContent }}
+                        @else
+                            Your comprehensive API Gateway for seamless integration and management.<br>
+                            Build, deploy, and scale your applications with confidence.
+                        @endif
                     </p>
                 </div>
 
@@ -669,6 +695,15 @@
                 <div class="features-section" id="features">
                     <h2 class="section-title">Powerful Features</h2>
                     <div class="features-grid">
+                        @if(!empty($siteFeatures))
+                            @foreach($siteFeatures as $feature)
+                                <div class="feature-card">
+                                    <div class="feature-icon"><i class="fas fa-check-circle"></i></div>
+                                    <div class="feature-title">Custom Feature</div>
+                                    <div class="feature-desc">{{ $feature }}</div>
+                                </div>
+                            @endforeach
+                        @else
                         <div class="feature-card">
                             <div class="feature-icon"><i class="fas fa-bolt"></i></div>
                             <div class="feature-title">Lightning Fast</div>
@@ -699,6 +734,7 @@
                             <div class="feature-title">Support</div>
                             <div class="feature-desc">24/7 dedicated support team ready to help</div>
                         </div>
+                        @endif
                     </div>
                 </div>
 
@@ -801,13 +837,14 @@
                 }
             });
         });
-    </script>
-    function submitLogoutForm() {
-        const logoutForm = document.getElementById('logoutForm');
-        if (logoutForm) {
-            logoutForm.submit();
+
+        function submitLogoutForm() {
+            const logoutForm = document.getElementById('logoutForm');
+            if (logoutForm) {
+                logoutForm.submit();
+            }
         }
-    }
+    </script>
 
 </body>
 </html>

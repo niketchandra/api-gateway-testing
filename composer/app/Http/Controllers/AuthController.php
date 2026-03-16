@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -32,8 +33,9 @@ class AuthController extends Controller
 
             // Log the user in
             Auth::login($user);
+            $targetRoute = in_array((int) $user->rbac_id, [100, 101], true) ? 'admin.dashboard' : 'dashboard';
 
-            return redirect()->route('dashboard')->with('success', 'Registration successful! Welcome to AtGlance.');
+            return redirect()->route($targetRoute)->with('success', 'Registration successful! Welcome to AtGlance.');
         } catch (\Exception $e) {
             return back()->withErrors(['register' => 'Registration failed. Please try again.']);
         }
@@ -69,7 +71,9 @@ class AuthController extends Controller
             // Log the user in
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
-            return redirect()->route('dashboard')->with('success', 'Welcome back!');
+            $targetRoute = in_array((int) $user->rbac_id, [100, 101], true) ? 'admin.dashboard' : 'dashboard';
+
+            return redirect()->route($targetRoute)->with('success', 'Welcome back!');
         }
 
         return back()->withErrors([
@@ -99,7 +103,7 @@ class AuthController extends Controller
         ]);
 
         // Generate a reset token (in a real app, use Laravel's password reset functionality)
-        $token = str_random(64);
+        $token = Str::random(64);
 
         // Store the token in the database or cache
         // For now, just return a message

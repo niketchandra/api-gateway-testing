@@ -18,6 +18,10 @@ class DashboardController extends Controller
      */
     public function index()
     {
+        if (in_array((int) Auth::user()->rbac_id, [100, 101], true)) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $now = Carbon::now();
         $currentWeekStart = $now->copy()->startOfWeek();
         $previousWeekStart = $currentWeekStart->copy()->subWeek();

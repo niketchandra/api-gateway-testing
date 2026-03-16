@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AdminDashboardController;
 
 // Root route - show login/registration on left sidebar, content on right
 Route::get('/', function () {
@@ -40,4 +41,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/password/update', [DashboardController::class, 'updatePassword'])->name('password.update');
     Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
     Route::get('/products', [DashboardController::class, 'products'])->name('products');
+
+    Route::middleware('admin.role')->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('/users', [AdminDashboardController::class, 'usersIndex'])->name('admin.users');
+        Route::post('/users', [AdminDashboardController::class, 'createUser'])->name('admin.users.store');
+        Route::get('/users/{user}', [AdminDashboardController::class, 'userDashboard'])->name('admin.users.show');
+        Route::get('/users/{user}/profile', [AdminDashboardController::class, 'userProfile'])->name('admin.users.profile');
+        Route::get('/users/{user}/systems/{systemId}/services', [AdminDashboardController::class, 'userSystemServices'])->name('admin.users.systems.services');
+        Route::get('/users/{user}/services/{serviceId}/versions', [AdminDashboardController::class, 'userServiceVersions'])->name('admin.users.services.versions');
+        Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('admin.settings');
+        Route::post('/settings/site', [AdminDashboardController::class, 'updateSiteSettings'])->name('admin.settings.site');
+        Route::post('/settings/s3', [AdminDashboardController::class, 'updateS3Settings'])->name('admin.settings.s3');
+        Route::post('/settings/mail', [AdminDashboardController::class, 'updateMailSettings'])->name('admin.settings.mail');
+        Route::post('/settings/sso', [AdminDashboardController::class, 'updateSsoSettings'])->name('admin.settings.sso');
+    });
 });
