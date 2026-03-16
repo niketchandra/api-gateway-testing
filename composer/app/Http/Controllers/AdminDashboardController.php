@@ -113,6 +113,30 @@ class AdminDashboardController extends Controller
         return view('admin.user-profile', compact('user', 'stats'));
     }
 
+    public function updateUser(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'username' => ['required', 'string', 'max:255'],
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'role' => ['required', Rule::in(['user', 'admin'])],
+        ]);
+
+        $user->name = $validated['username'];
+        $user->first_name = $validated['first_name'] ?? null;
+        $user->last_name = $validated['last_name'] ?? null;
+        $user->email = $validated['email'];
+        $user->status = $validated['status'];
+        $user->rbac_id = $validated['role'] === 'admin' ? 101 : 102;
+        $user->save();
+
+        return redirect()
+            ->route('admin.users.profile', ['user' => $user->id])
+            ->with('success', 'User profile updated successfully.');
+    }
+
     public function userDashboard(User $user): View
     {
         $systems = SystemRegister::query()

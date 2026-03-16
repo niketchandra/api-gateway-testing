@@ -48,6 +48,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/users', [AdminDashboardController::class, 'createUser'])->name('admin.users.store');
         Route::get('/users/{user}', [AdminDashboardController::class, 'userDashboard'])->name('admin.users.show');
         Route::get('/users/{user}/profile', [AdminDashboardController::class, 'userProfile'])->name('admin.users.profile');
+        Route::put('/users/{user}', [AdminDashboardController::class, 'updateUser'])->name('admin.users.update');
         Route::get('/users/{user}/systems/{systemId}/services', [AdminDashboardController::class, 'userSystemServices'])->name('admin.users.systems.services');
         Route::get('/users/{user}/services/{serviceId}/versions', [AdminDashboardController::class, 'userServiceVersions'])->name('admin.users.services.versions');
         Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('admin.settings');

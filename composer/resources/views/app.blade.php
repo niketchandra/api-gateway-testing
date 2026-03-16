@@ -632,6 +632,9 @@
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </button>
                 </form>
+                <div style="margin-top:8px; text-align:center; font-size:11px; color:#9ca3af;">
+                    Version {{ config('app.version') }}
+                </div>
             </div>
         </div>
 
@@ -651,9 +654,6 @@
                     </div>
                     <div class="header-right">
                         <span style="color: #333; font-weight: 500;">Hello, {{ auth()->user()->name }}!</span>
-                        <button type="button" onclick="submitLogoutForm()" class="logout-btn">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </button>
                     </div>
                 </div>
 
@@ -661,6 +661,11 @@
                 <div id="dashboardContent">
                     @yield('dashboard-content')
                 </div>
+
+                <footer style="margin-top:24px; padding:14px 8px; border-top:1px solid #e5e7eb; color:#6b7280; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>AtGlance Dashboard</span>
+                    <span>Version {{ config('app.version') }}</span>
+                </footer>
             @else
                 <!-- PUBLIC HEADER -->
                 <div class="header">

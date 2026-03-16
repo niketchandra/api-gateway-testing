@@ -42,7 +42,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./composer/storage:/app/storage
+      - ./composer:/app
+      - /app/vendor
     depends_on:
       mysql:
         condition: service_healthy
@@ -72,6 +73,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - ./composer:/app
+      - /app/vendor
     restart: unless-stopped
 
   phpmyadmin:

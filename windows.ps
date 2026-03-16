@@ -1,0 +1,74 @@
+param(
+    [switch]$NoCache,
+    [switch]$SkipMigrations
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Invoke-Compose {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Args
+    )
+
+    if ($script:UseComposePlugin) {
+        & docker compose @Args
+    }
+    else {
+        & docker-compose @Args
+    }
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Docker Compose command failed: $($Args -join ' ')"
+    }
+}
+
+$script:UseComposePlugin = $false
+try {
+    & docker compose version *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $script:UseComposePlugin = $true
+    }
+}
+catch {
+    $script:UseComposePlugin = $false
+}
+
+if (-not $script:UseComposePlugin -and -not (Get-Command docker-compose -ErrorAction SilentlyContinue)) {
+    throw "Docker Compose is not installed. Install Docker Compose and try again."
+}
+
+$composeFiles = @('-f', 'docker-compose.yml', '-f', 'docker-compose-kong.yml')
+
+Write-Host "[1/5] Docker down"
+Invoke-Compose -Args ($composeFiles + @('down', '--remove-orphans'))
+
+Write-Host "[2/5] Docker build"
+if ($NoCache) {
+    Invoke-Compose -Args ($composeFiles + @('build', '--no-cache'))
+}
+else {
+    Invoke-Compose -Args ($composeFiles + @('build'))
+}
+
+Write-Host "[3/5] Docker deploy"
+Invoke-Compose -Args ($composeFiles + @('up', '-d'))
+
+Invoke-Compose -Args ($composeFiles + @('exec', '-T', 'api', 'sh', '-lc', "grep -q '^APP_KEY=base64:' /app/.env || php artisan key:generate --force"))
+
+if (-not $SkipMigrations) {
+    Write-Host "[4/5] Run migration"
+    Invoke-Compose -Args ($composeFiles + @('exec', '-T', 'api', 'php', 'artisan', 'migrate', '--force'))
+
+    Write-Host "[5/5] Run seeder"
+    Invoke-Compose -Args ($composeFiles + @('exec', '-T', 'api', 'php', 'artisan', 'db:seed', '--force'))
+}
+else {
+    Write-Host "[4/5] Skip migration"
+    Write-Host "[5/5] Skip seeder"
+}
+
+Write-Host "Final service status"
+Invoke-Compose -Args ($composeFiles + @('ps'))
+
+Write-Host "Deployment completed successfully."
