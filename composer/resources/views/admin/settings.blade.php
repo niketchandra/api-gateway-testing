@@ -45,8 +45,12 @@
         <h2 style="font-size:18px; margin-bottom:12px;">Info</h2>
         <div style="display:grid; grid-template-columns:1fr; gap:10px;">
             <div>
-                <div style="font-size:13px; color:#4b5563; margin-bottom:4px;">Site URL</div>
-                <div style="font-size:14px; color:#111827; font-weight:600;">{{ $siteUrl }}</div>
+                <div style="font-size:13px; color:#4b5563; margin-bottom:4px;">Domain</div>
+                <div style="font-size:14px; color:#111827; font-weight:600;">{{ $siteDomain }}</div>
+            </div>
+            <div>
+                <div style="font-size:13px; color:#4b5563; margin-bottom:4px;">Organization Name</div>
+                <div style="font-size:14px; color:#111827; font-weight:600;">{{ $organizationName }}</div>
             </div>
             <div>
                 <div style="font-size:13px; color:#4b5563; margin-bottom:4px;">Local Storage Base URL</div>

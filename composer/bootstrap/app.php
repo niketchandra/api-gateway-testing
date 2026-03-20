@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.role' => \App\Http\Middleware\AdminRoleMiddleware::class,
             'active.user' => \App\Http\Middleware\EnsureUserIsActive::class,
             'profile.completed' => \App\Http\Middleware\EnsureProfileSetupComplete::class,
+            'app.installed' => \App\Http\Middleware\EnsureApplicationInstalled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

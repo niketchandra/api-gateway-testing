@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminSetting;
 use App\Models\ConfigurationFile;
+use App\Models\Organization;
 use App\Models\Service;
 use App\Models\SystemRegister;
 use App\Models\User;
@@ -72,7 +73,7 @@ class AdminDashboardController extends Controller
                 DB::raw('COUNT(DISTINCT services.service_id) as service_count'),
                 DB::raw('COUNT(DISTINCT configuration_files.id) as configuration_count')
             )
-            ->whereIn('users.rbac_id', [100, 101])
+            ->where('users.rbac_id', 101)
             ->groupBy('users.id', 'users.name', 'users.email', 'users.status', 'users.created_at')
             ->orderByDesc('users.created_at')
             ->paginate(25, ['*'], 'admin_page');
@@ -234,6 +235,16 @@ class AdminDashboardController extends Controller
 
         $s3Runtime = $this->resolveS3RuntimeCredentials();
         $siteUrl = rtrim((string) config('app.url', ''), '/');
+        $siteDomain = parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl;
+        $sitePort = parse_url($siteUrl, PHP_URL_PORT);
+        if (!empty($sitePort) && is_numeric($sitePort)) {
+            $siteDomain .= ':' . $sitePort;
+        }
+
+        $organizationName = Organization::query()
+            ->where('id', 200)
+            ->value('name') ?? 'Default Organization';
+
         $localStorageBaseUrl = $this->resolveStorageBaseUrl('local');
         $s3StorageBaseUrl = $this->resolveStorageBaseUrl('s3');
 
@@ -266,6 +277,8 @@ class AdminDashboardController extends Controller
 
         return view('admin.settings', [
             'siteUrl' => $siteUrl,
+            'siteDomain' => $siteDomain,
+            'organizationName' => $organizationName,
             'siteLogoUrl' => $this->resolveSiteLogoUrl(),
             'siteLogoUrlOverride' => AdminSetting::getValue('site_logo_url', ''),
             'siteDescription' => AdminSetting::getValue('site_description', AdminSetting::getValue('site_content', '')),
