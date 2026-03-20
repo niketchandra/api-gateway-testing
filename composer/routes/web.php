@@ -18,11 +18,16 @@ Route::get('/login', function () {
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/auth/sso/{provider}', [AuthController::class, 'redirectToSso'])->name('auth.sso.redirect');
+Route::get('/auth/sso/{provider}/callback', [AuthController::class, 'handleSsoCallback'])->name('auth.sso.callback');
 Route::post('/password/email', [AuthController::class, 'sendPasswordResetLink'])->name('password.email');
 Route::post('/contact', [AuthController::class, 'storeContact'])->name('contact');
+Route::get('/site-logo/{path?}', [AdminDashboardController::class, 'serveSiteLogo'])
+    ->where('path', '.*')
+    ->name('site.logo');
 
 // Protected routes - requires web session authentication
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active.user', 'profile.completed'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/configuration-backups', [DashboardController::class, 'configurationBackups'])->name('configuration-backups');
     Route::get('/configuration-backups/service-name/{serviceName}/versions', [DashboardController::class, 'viewServiceVersionsByName'])->name('configuration-backups.service-versions-by-name');
@@ -35,11 +40,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/vulnerabilities-identified', [DashboardController::class, 'vulnerabilitiesIdentified'])->name('vulnerabilities-identified');
     Route::get('/settings', [DashboardController::class, 'settings'])->name('settings');
     Route::post('/settings/update', [DashboardController::class, 'updateSettings'])->name('settings.update');
+    Route::post('/settings/pin/reset', [DashboardController::class, 'resetPin'])->name('settings.pin.reset');
+    Route::post('/settings/pin/reset/sso', [DashboardController::class, 'beginSsoPinReset'])->name('settings.pin.reset.sso');
     Route::post('/settings/api-keys', [DashboardController::class, 'createApiKey'])->name('settings.api-keys.create');
     Route::post('/settings/api-keys/view', [DashboardController::class, 'viewApiKey'])->name('settings.api-keys.view');
     Route::post('/settings/api-keys/revoke', [DashboardController::class, 'revokeApiKey'])->name('settings.api-keys.revoke');
     Route::post('/password/update', [DashboardController::class, 'updatePassword'])->name('password.update');
     Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
+    Route::post('/profile/setup', [DashboardController::class, 'updateProfileSetup'])->name('profile.update');
     Route::get('/products', [DashboardController::class, 'products'])->name('products');
 
     Route::middleware('admin.role')->prefix('admin')->group(function () {
@@ -54,6 +62,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('admin.settings');
         Route::post('/settings/site', [AdminDashboardController::class, 'updateSiteSettings'])->name('admin.settings.site');
         Route::post('/settings/s3', [AdminDashboardController::class, 'updateS3Settings'])->name('admin.settings.s3');
+        Route::post('/settings/migration/analyze', [AdminDashboardController::class, 'analyzeMigration'])->name('admin.settings.migration.analyze');
+        Route::post('/settings/migration/start', [AdminDashboardController::class, 'startMigration'])->name('admin.settings.migration.start');
         Route::post('/settings/mail', [AdminDashboardController::class, 'updateMailSettings'])->name('admin.settings.mail');
         Route::post('/settings/sso', [AdminDashboardController::class, 'updateSsoSettings'])->name('admin.settings.sso');
     });

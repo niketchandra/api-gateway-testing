@@ -4,6 +4,18 @@
 
 @section('dashboard-content')
 <div style="padding: 40px;">
+    @if (session('success'))
+        <div style="margin-bottom: 16px; padding: 12px 14px; border-radius: 8px; background: #d1e7dd; border: 1px solid #badbcc; color: #0f5132;">
+            <i class="fas fa-check-circle"></i> {{ session('success') }}
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div style="margin-bottom: 16px; padding: 12px 14px; border-radius: 8px; background: #f8d7da; border: 1px solid #f1aeb5; color: #842029;">
+            <i class="fas fa-times-circle"></i> {{ $errors->first() }}
+        </div>
+    @endif
+
     <!-- Page Header -->
     <div style="margin-bottom: 30px;">
         <h1 style="font-size: 32px; font-weight: bold; color: #333; margin-bottom: 10px;">Settings</h1>
@@ -209,6 +221,38 @@
             background: #f8d7da;
             color: #721c24;
         }
+
+        .pin-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .pin-box {
+            width: 52px;
+            height: 54px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            border: 2px solid #d1d5db;
+            border-radius: 10px;
+            background: #ffffff;
+            transition: all 0.2s ease;
+        }
+
+        .pin-box:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .pin-help-text {
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 12px;
+        }
     </style>
 
     <!-- ACCOUNT SETTINGS -->
@@ -304,6 +348,35 @@
                     </div>
                     <div class="toggle" onclick="this.classList.toggle('active')"></div>
                 </div>
+            </div>
+
+            <div style="border-top: 1px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;"><i class="fas fa-key"></i> Reset PIN</h3>
+                <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                    Set a new 5-digit PIN for your account. When you click Reset PIN, an authentication popup will appear.
+                </p>
+
+                <form method="POST" action="{{ route('settings.pin.reset') }}" id="resetPinForm">
+                    @csrf
+                    <input type="hidden" id="reset_pin_password" name="current_password" value="">
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 380px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">New 5-digit PIN</label>
+                            <div class="pin-row" data-target="settings_pin"></div>
+                            <input type="hidden" name="pin" id="settings_pin" value="">
+                            <div class="pin-help-text">Enter exactly 5 digits</div>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">Confirm New PIN</label>
+                            <div class="pin-row" data-target="settings_pin_confirmation"></div>
+                            <input type="hidden" name="pin_confirmation" id="settings_pin_confirmation" value="">
+                            <div class="pin-help-text">Re-enter the same 5 digits</div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-save" style="margin-top: 16px;" onclick="openResetPinAuthModal()"><i class="fas fa-sync"></i> Reset PIN</button>
+                </form>
             </div>
 
             <div style="border-top: 1px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
@@ -457,6 +530,48 @@
             </div>
         </div>
     </div>
+
+    <!-- RESET PIN AUTH MODAL -->
+    <div id="resetPinAuthModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1003; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 10px; padding: 30px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 style="font-size: 20px; font-weight: bold; margin: 0;">Authenticate to Reset PIN</h2>
+                <button type="button" onclick="closeResetPinAuthModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: #666; margin-bottom: 18px;">Enter your password, or authenticate using one of the active SSO providers.</p>
+
+            <div class="settings-form-group" style="margin-bottom: 14px;">
+                <label for="resetPinModalPassword">Password</label>
+                <input type="password" id="resetPinModalPassword" placeholder="Enter your password">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                <button type="button" class="btn-save" onclick="submitResetPinWithPassword()"><i class="fas fa-check"></i> Continue with Password</button>
+                <button type="button" class="btn-secondary" onclick="closeResetPinAuthModal()" style="margin: 0;">Cancel</button>
+            </div>
+
+            @if(!empty($ssoProvidersForAuth ?? []))
+                <div style="border-top: 1px solid #e5e7eb; padding-top: 14px;">
+                    <p style="font-size: 12px; color: #6b7280; margin-bottom: 10px; font-weight: 600;">OR authenticate using SSO</p>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                        @foreach($ssoProvidersForAuth as $ssoProvider)
+                            <button type="button" class="btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; margin: 0;" onclick="startSsoPinReset('{{ $ssoProvider['key'] }}')">
+                                <i class="{{ $ssoProvider['icon'] }}"></i>
+                                <span>Authenticate with {{ $ssoProvider['label'] }} and Reset PIN</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <form id="ssoPinResetForm" method="POST" action="{{ route('settings.pin.reset.sso') }}" style="display:none;">
+        @csrf
+        <input type="hidden" name="provider" id="sso_pin_provider" value="">
+        <input type="hidden" name="pin" id="sso_pin_value" value="">
+        <input type="hidden" name="pin_confirmation" id="sso_pin_confirmation_value" value="">
+    </form>
 
     <!-- CREATE KEY MODAL -->
     <div id="createKeyModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
@@ -750,6 +865,123 @@
             alert('API key copied to clipboard!');
         });
     }
+
+    function openResetPinAuthModal() {
+        const pin = document.getElementById('settings_pin')?.value || '';
+        const pinConfirmation = document.getElementById('settings_pin_confirmation')?.value || '';
+
+        if (pin.length !== 5 || pinConfirmation.length !== 5) {
+            alert('Please enter 5 digits in both PIN fields.');
+            return;
+        }
+
+        if (pin !== pinConfirmation) {
+            alert('PIN and Confirm PIN do not match.');
+            return;
+        }
+
+        document.getElementById('reset_pin_password').value = '';
+        document.getElementById('resetPinModalPassword').value = '';
+        document.getElementById('resetPinAuthModal').style.display = 'flex';
+        document.getElementById('resetPinModalPassword').focus();
+    }
+
+    function closeResetPinAuthModal() {
+        document.getElementById('resetPinAuthModal').style.display = 'none';
+    }
+
+    function submitResetPinWithPassword() {
+        const password = document.getElementById('resetPinModalPassword').value || '';
+        if (!password.trim()) {
+            alert('Please enter your password or use SSO authentication.');
+            return;
+        }
+
+        document.getElementById('reset_pin_password').value = password;
+        document.getElementById('resetPinForm').submit();
+    }
+
+    function startSsoPinReset(providerKey) {
+        const pin = document.getElementById('settings_pin')?.value || '';
+        const pinConfirmation = document.getElementById('settings_pin_confirmation')?.value || '';
+
+        if (pin.length !== 5 || pinConfirmation.length !== 5) {
+            alert('Please enter 5 digits in both PIN fields.');
+            return;
+        }
+
+        if (pin !== pinConfirmation) {
+            alert('PIN and Confirm PIN do not match.');
+            return;
+        }
+
+        document.getElementById('sso_pin_provider').value = providerKey;
+        document.getElementById('sso_pin_value').value = pin;
+        document.getElementById('sso_pin_confirmation_value').value = pinConfirmation;
+        document.getElementById('ssoPinResetForm').submit();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const pinRows = document.querySelectorAll('.pin-row');
+
+        pinRows.forEach((row) => {
+            if (row.children.length > 0) {
+                return;
+            }
+
+            const targetId = row.getAttribute('data-target');
+            const hiddenInput = document.getElementById(targetId);
+            if (!hiddenInput) {
+                return;
+            }
+
+            for (let i = 0; i < 5; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.inputMode = 'numeric';
+                input.maxLength = 1;
+                input.className = 'pin-box';
+                input.autocomplete = 'off';
+
+                input.addEventListener('paste', function (event) {
+                    event.preventDefault();
+                    const pasted = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 5);
+                    const boxes = row.querySelectorAll('.pin-box');
+                    pasted.split('').forEach((digit, index) => {
+                        if (boxes[index]) {
+                            boxes[index].value = digit;
+                        }
+                    });
+                    syncPinRow(row, hiddenInput);
+                    const nextIndex = Math.min(pasted.length, 4);
+                    if (boxes[nextIndex]) {
+                        boxes[nextIndex].focus();
+                    }
+                });
+
+                input.addEventListener('input', function () {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 1);
+                    syncPinRow(row, hiddenInput);
+
+                    if (this.value && this.nextElementSibling) {
+                        this.nextElementSibling.focus();
+                    }
+                });
+
+                input.addEventListener('keydown', function (event) {
+                    if (event.key === 'Backspace' && !this.value && this.previousElementSibling) {
+                        this.previousElementSibling.focus();
+                    }
+                });
+
+                row.appendChild(input);
+            }
+        });
+
+        function syncPinRow(row, hiddenInput) {
+            hiddenInput.value = Array.from(row.querySelectorAll('.pin-box')).map((box) => box.value).join('');
+        }
+    });
 </script>
 
 @endsection

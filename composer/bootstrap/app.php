@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.session' => \App\Http\Middleware\AuthenticateSession::class,
             'auth.pat' => \App\Http\Middleware\AuthenticatePatToken::class,
             'admin.role' => \App\Http\Middleware\AdminRoleMiddleware::class,
+            'active.user' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'profile.completed' => \App\Http\Middleware\EnsureProfileSetupComplete::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

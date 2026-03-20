@@ -9,6 +9,9 @@ use App\Models\SystemRegister;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -227,23 +230,63 @@ class AdminDashboardController extends Controller
 
     public function settings(): View
     {
+        $this->syncStorageBaseUrlsToDatabase();
+
+        $s3Runtime = $this->resolveS3RuntimeCredentials();
+        $siteUrl = rtrim((string) config('app.url', ''), '/');
+        $localStorageBaseUrl = $this->resolveStorageBaseUrl('local');
+        $s3StorageBaseUrl = $this->resolveStorageBaseUrl('s3');
+
+        $useS3Storage = $this->isS3Enabled();
+        $migrationDirection = (string) session('migration_direction', $useS3Storage ? 'local_to_s3' : 's3_to_local');
+        if (!in_array($migrationDirection, ['local_to_s3', 's3_to_local'], true)) {
+            $migrationDirection = $useS3Storage ? 'local_to_s3' : 's3_to_local';
+        }
+        $migrationKeepSource = (bool) session('migration_keep_source', true);
+        $migrationAnalysis = session('migration_analysis');
+        $migrationResult = session('migration_result');
+
         $siteFeatures = $this->getJsonSetting('site_features', []);
         $siteMetadata = $this->getJsonSetting('site_metadata', []);
         $siteTags = $this->getJsonSetting('site_tags', []);
         $mailRecipients = $this->getJsonSetting('mail_recipients', []);
+        $ssoProviderOptions = config('sso.providers', []);
+        $ssoSettings = $this->resolveSsoSettingsFromEnvironment($ssoProviderOptions);
+        $ssoEnabledProviders = $ssoSettings['enabled_providers'];
+        $ssoProviderUrls = $ssoSettings['provider_urls'];
+        $ssoProviderClientIds = $ssoSettings['provider_client_ids'];
+        $ssoProviderClientSecrets = $ssoSettings['provider_client_secrets'];
+        $ssoProviderTenantIds = $ssoSettings['provider_tenant_ids'];
+
+        $hasSsoProviderClientSecrets = collect($ssoProviderOptions)
+            ->mapWithKeys(function ($meta, $providerKey) use ($ssoProviderClientSecrets) {
+                return [$providerKey => !empty($ssoProviderClientSecrets[$providerKey] ?? '')];
+            })
+            ->all();
 
         return view('admin.settings', [
-            'siteLogoUrl' => AdminSetting::getValue('site_logo_url', ''),
+            'siteUrl' => $siteUrl,
+            'siteLogoUrl' => $this->resolveSiteLogoUrl(),
+            'siteLogoUrlOverride' => AdminSetting::getValue('site_logo_url', ''),
             'siteDescription' => AdminSetting::getValue('site_description', AdminSetting::getValue('site_content', '')),
             'siteContent' => AdminSetting::getValue('site_content', ''),
             'siteMetadataText' => json_encode($siteMetadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
             'siteTagsText' => implode(',', $siteTags),
             'siteFeaturesText' => implode("\n", $siteFeatures),
-            'useS3Storage' => (bool) AdminSetting::getValue('s3_enabled', false),
-            's3Region' => AdminSetting::getValue('s3_region', ''),
-            's3Bucket' => AdminSetting::getValue('s3_bucket', ''),
-            's3AccessKey' => AdminSetting::getValue('s3_access_key', ''),
-            'hasS3Secret' => AdminSetting::getValue('s3_secret_key', null) !== null,
+            'useS3Storage' => $useS3Storage,
+            's3Region' => $s3Runtime['region'],
+            's3Bucket' => $s3Runtime['bucket'],
+            's3AccessKey' => $s3Runtime['key'],
+            'localStorageBaseUrl' => $localStorageBaseUrl,
+            's3StorageBaseUrl' => $s3StorageBaseUrl,
+            'hasS3Secret' => $s3Runtime['secret'] !== '',
+            'migrationDirection' => $migrationDirection,
+            'migrationKeepSource' => $migrationKeepSource,
+            'migrationAnalysis' => is_array($migrationAnalysis) ? $migrationAnalysis : null,
+            'migrationResult' => is_array($migrationResult) ? $migrationResult : null,
+            'migrationNotice' => (string) session('migration_notice', ''),
+            'migrationStatus' => (string) AdminSetting::getValue('migration_status', ''),
+            'migrationProgress' => $this->getJsonSetting('migration_progress', []),
             'mailHost' => AdminSetting::getValue('mail_host', ''),
             'mailPort' => AdminSetting::getValue('mail_port', ''),
             'mailUsername' => AdminSetting::getValue('mail_username', ''),
@@ -252,12 +295,18 @@ class AdminDashboardController extends Controller
             'mailFromAddress' => AdminSetting::getValue('mail_from_address', ''),
             'mailFromName' => AdminSetting::getValue('mail_from_name', ''),
             'mailRecipientsText' => implode(',', $mailRecipients),
-            'ssoEnabled' => (bool) AdminSetting::getValue('sso_enabled', false),
-            'ssoProvider' => AdminSetting::getValue('sso_provider', ''),
-            'ssoClientId' => AdminSetting::getValue('sso_client_id', ''),
-            'hasSsoClientSecret' => AdminSetting::getValue('sso_client_secret', null) !== null,
-            'ssoTenantId' => AdminSetting::getValue('sso_tenant_id', ''),
-            'ssoRedirectUrl' => AdminSetting::getValue('sso_redirect_url', ''),
+            'ssoEnabled' => $ssoSettings['enabled'],
+            'ssoProvider' => $ssoEnabledProviders[0] ?? '',
+            'ssoProviderOptions' => $ssoProviderOptions,
+            'ssoEnabledProviders' => $ssoEnabledProviders,
+            'ssoProviderUrls' => $ssoProviderUrls,
+            'ssoProviderClientIds' => $ssoProviderClientIds,
+            'hasSsoProviderClientSecrets' => $hasSsoProviderClientSecrets,
+            'ssoProviderTenantIds' => $ssoProviderTenantIds,
+            'ssoClientId' => $ssoProviderClientIds[$ssoEnabledProviders[0] ?? ''] ?? '',
+            'hasSsoClientSecret' => !empty($ssoProviderClientSecrets[$ssoEnabledProviders[0] ?? ''] ?? ''),
+            'ssoTenantId' => $ssoProviderTenantIds[$ssoEnabledProviders[0] ?? ''] ?? '',
+            'ssoRedirectUrl' => $ssoProviderUrls[$ssoEnabledProviders[0] ?? ''] ?? '',
         ]);
     }
 
@@ -297,10 +346,17 @@ class AdminDashboardController extends Controller
             ->values()
             ->all();
 
-        $logoUrl = (string) ($validated['site_logo_url'] ?? '');
+        $logoUrl = trim((string) ($validated['site_logo_url'] ?? ''));
         if ($request->hasFile('site_logo')) {
-            $path = $request->file('site_logo')->store('site-settings', 'public');
-            $logoUrl = Storage::url($path);
+            $storageDisk = $this->resolveStorageDisk();
+            if ($storageDisk === 's3') {
+                $path = $request->file('site_logo')->store('site-settings', ['disk' => 's3', 'visibility' => 'public']);
+            } else {
+                $path = $request->file('site_logo')->store('site-settings', $storageDisk);
+            }
+            AdminSetting::putValue('site', 'site_logo_disk', $storageDisk);
+            AdminSetting::putValue('site', 'site_logo_path', (string) $path);
+            $logoUrl = '';
         }
 
         AdminSetting::putValue('site', 'site_logo_url', $logoUrl);
@@ -315,6 +371,8 @@ class AdminDashboardController extends Controller
 
     public function updateS3Settings(Request $request): RedirectResponse
     {
+        $currentlyEnabled = $this->isS3Enabled();
+
         $validated = $request->validate([
             's3_enabled' => ['nullable', 'boolean'],
             's3_access_key' => ['required', 'string', 'max:255'],
@@ -323,17 +381,203 @@ class AdminDashboardController extends Controller
             's3_bucket' => ['required', 'string', 'max:255'],
         ]);
 
-        AdminSetting::putValue('storage', 's3_enabled', $request->boolean('s3_enabled'));
-        AdminSetting::putValue('storage', 's3_access_key', $validated['s3_access_key']);
+        $requestedEnabled = $request->boolean('s3_enabled');
+        $runtimeCredentials = $this->resolveS3RuntimeCredentials();
+        $resolvedSecret = trim((string) ($validated['s3_secret_key'] ?? ''));
 
-        if (!empty($validated['s3_secret_key'])) {
-            AdminSetting::putValue('storage', 's3_secret_key', $validated['s3_secret_key'], true);
+        if ($resolvedSecret === '') {
+            $resolvedSecret = $runtimeCredentials['secret'];
         }
 
-        AdminSetting::putValue('storage', 's3_region', $validated['s3_region']);
-        AdminSetting::putValue('storage', 's3_bucket', $validated['s3_bucket']);
+        if ($requestedEnabled && $resolvedSecret === '') {
+            return back()
+                ->withErrors(['s3_secret_key' => 'S3 secret key is required when enabling S3.'])
+                ->withInput();
+        }
+
+        if ($currentlyEnabled && !$requestedEnabled) {
+            $analysis = $this->analyzeStorageMigrationDirection('s3_to_local');
+            if (($analysis['files_pending_migration'] ?? 0) > 0) {
+                return redirect()
+                    ->route('admin.settings', ['tab' => 'migration'])
+                    ->withErrors([
+                        's3_enabled' => 'Before disabling S3, migrate data from S3 to local in the Migration tab.',
+                    ])
+                    ->with('migration_analysis', $analysis)
+                    ->with('migration_direction', 's3_to_local');
+            }
+        }
+
+        $siteUrl = rtrim((string) config('app.url', ''), '/');
+        $localStorageBaseUrl = $siteUrl !== '' ? $siteUrl . '/storage' : '';
+        $s3StorageBaseUrl = '';
+
+        if ($requestedEnabled && trim($validated['s3_bucket']) !== '' && trim($validated['s3_region']) !== '') {
+            $s3StorageBaseUrl = sprintf('https://%s.s3.%s.amazonaws.com/', trim($validated['s3_bucket']), trim($validated['s3_region']));
+        }
+
+        $this->setEnvironmentValues([
+            'S3_ENABLED' => $requestedEnabled ? 'true' : 'false',
+            'AWS_ACCESS_KEY_ID' => $validated['s3_access_key'],
+            'AWS_SECRET_ACCESS_KEY' => $this->encryptSecretForEnvironment($resolvedSecret),
+            'AWS_DEFAULT_REGION' => $validated['s3_region'],
+            'AWS_BUCKET' => $validated['s3_bucket'],
+            'AWS_URL' => $s3StorageBaseUrl,
+            'LOCAL_STORAGE_BASE_URL' => $localStorageBaseUrl,
+            'S3_STORAGE_BASE_URL' => $s3StorageBaseUrl,
+            'VERSION' => (string) config('app.version', '0.1.0'),
+        ]);
+
+        Config::set('filesystems.disks.s3.key', $validated['s3_access_key']);
+        Config::set('filesystems.disks.s3.secret', $resolvedSecret);
+        Config::set('filesystems.disks.s3.region', $validated['s3_region']);
+        Config::set('filesystems.disks.s3.bucket', $validated['s3_bucket']);
+        Config::set('filesystems.disks.s3.url', $s3StorageBaseUrl);
+
+        $this->syncStorageBaseUrlsToDatabase();
+
+        if (!$currentlyEnabled && $requestedEnabled) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'migration'])
+                ->with('success', 'S3 has been enabled. Go ahead and migrate existing local data to S3 from the Migration tab.')
+                ->with('migration_notice', 'S3 is enabled. Run Local to S3 migration to move existing local data.')
+                ->with('migration_direction', 'local_to_s3');
+        }
 
         return redirect()->route('admin.settings', ['tab' => 's3'])->with('success', 'S3 settings saved successfully.');
+    }
+
+    public function analyzeMigration(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'direction' => ['required', Rule::in(['local_to_s3', 's3_to_local'])],
+            'keep_source' => ['nullable', 'boolean'],
+        ]);
+
+        $analysis = $this->analyzeStorageMigrationDirection($validated['direction']);
+        $keepSource = $request->boolean('keep_source');
+
+        return redirect()
+            ->route('admin.settings', ['tab' => 'migration'])
+            ->with('migration_analysis', $analysis)
+            ->with('migration_direction', $validated['direction'])
+            ->with('migration_keep_source', $keepSource);
+    }
+
+    public function startMigration(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'direction' => ['required', Rule::in(['local_to_s3', 's3_to_local'])],
+            'keep_source' => ['nullable', 'boolean'],
+        ]);
+
+        $keepSource = $request->boolean('keep_source');
+
+        $analysis = $this->analyzeStorageMigrationDirection($validated['direction']);
+
+        if (($analysis['files_pending_migration'] ?? 0) === 0) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'migration'])
+                ->with('success', 'No files pending migration. Source and destination are already synchronized.')
+                ->with('migration_result', [
+                    'direction' => $validated['direction'],
+                    'keep_source' => $keepSource,
+                    'migrated_files' => 0,
+                    'verified_files' => (int) ($analysis['source_files_found'] ?? 0),
+                    'failed_verification' => 0,
+                    'source_deleted_files' => 0,
+                    'warnings' => [],
+                    'progress_percent' => 100,
+                ])
+                ->with('migration_analysis', $analysis)
+                ->with('migration_direction', $validated['direction'])
+                ->with('migration_keep_source', $keepSource);
+        }
+
+        $result = $this->executeStorageMigration($validated['direction'], $analysis['entries'] ?? [], $keepSource);
+
+        $postAnalysis = $this->analyzeStorageMigrationDirection($validated['direction']);
+
+        if ($validated['direction'] === 's3_to_local' && (($postAnalysis['files_pending_migration'] ?? 0) === 0)) {
+            $this->setEnvironmentValues(['S3_ENABLED' => 'false']);
+        }
+
+        if (!empty($result['errors'])) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'migration'])
+                ->withErrors(['migration' => implode(' | ', $result['errors'])])
+                ->with('migration_analysis', $postAnalysis)
+                ->with('migration_result', $result)
+                ->with('migration_direction', $validated['direction'])
+                ->with('migration_keep_source', $keepSource);
+        }
+
+        if ($validated['direction'] === 'local_to_s3') {
+            AdminSetting::putValue('storage', 'migration_local_to_s3_completed_at', now()->toDateTimeString());
+            AdminSetting::putValue('site', 'site_logo_disk', 's3');
+            if ($this->hasStorageDiskColumn()) {
+                ConfigurationFile::query()->whereNotNull('file_location')->update(['storage_disk' => 's3']);
+            }
+        } else {
+            AdminSetting::putValue('storage', 'migration_s3_to_local_completed_at', now()->toDateTimeString());
+            $this->setEnvironmentValues(['S3_ENABLED' => 'false']);
+            AdminSetting::putValue('site', 'site_logo_disk', 'public');
+            if ($this->hasStorageDiskColumn()) {
+                ConfigurationFile::query()->whereNotNull('file_location')->update(['storage_disk' => 'local']);
+            }
+        }
+
+        return redirect()
+            ->route('admin.settings', ['tab' => 'migration'])
+            ->with('success', 'Migration completed successfully with verification.')
+            ->with('migration_result', $result)
+            ->with('migration_analysis', $postAnalysis)
+                ->with('migration_direction', $validated['direction'])
+                ->with('migration_keep_source', $keepSource);
+    }
+
+    public function serveSiteLogo(?string $path = null)
+    {
+        $storedPath = ltrim(trim((string) AdminSetting::getValue('site_logo_path', '')), '/');
+        if ($storedPath === '') {
+            abort(404, 'Site logo not configured.');
+        }
+
+        $requestedPath = ltrim(trim((string) ($path ?? '')), '/');
+        if ($requestedPath !== '' && $requestedPath !== $storedPath) {
+            abort(404, 'Logo not found.');
+        }
+
+        $activeDisk = $this->resolveStorageDisk();
+        $fallbackDisk = strtolower(trim((string) AdminSetting::getValue('site_logo_disk', 'public')));
+        if ($fallbackDisk === 'local') {
+            $fallbackDisk = 'public';
+        }
+
+        $disk = $activeDisk;
+        if (!Storage::disk($disk)->exists($storedPath) && $fallbackDisk !== '' && Storage::disk($fallbackDisk)->exists($storedPath)) {
+            $disk = $fallbackDisk;
+        }
+
+        if (!Storage::disk($disk)->exists($storedPath)) {
+            abort(404, 'Logo file is missing in storage.');
+        }
+
+        $content = Storage::disk($disk)->get($storedPath);
+        $extension = strtolower(pathinfo($storedPath, PATHINFO_EXTENSION));
+        $mimeMap = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'gif' => 'image/gif',
+        ];
+        $mimeType = $mimeMap[$extension] ?? 'application/octet-stream';
+
+        return response($content, 200)
+            ->header('Content-Type', $mimeType)
+            ->header('Cache-Control', 'public, max-age=300');
     }
 
     public function updateMailSettings(Request $request): RedirectResponse
@@ -380,25 +624,107 @@ class AdminDashboardController extends Controller
 
     public function updateSsoSettings(Request $request): RedirectResponse
     {
+        $providerOptions = config('sso.providers', []);
+        $providerKeys = array_keys($providerOptions);
+
         $validated = $request->validate([
             'sso_enabled' => ['nullable', 'boolean'],
-            'sso_provider' => ['required', Rule::in(['azure-ad', 'okta', 'google', 'auth0', 'custom'])],
-            'sso_client_id' => ['required', 'string', 'max:255'],
+            'sso_enabled_providers' => ['nullable', 'array'],
+            'sso_enabled_providers.*' => [Rule::in($providerKeys)],
+            'sso_provider_urls' => ['nullable', 'array'],
+            'sso_provider_urls.*' => ['nullable', 'url', 'max:2048'],
+            'sso_provider_client_ids' => ['nullable', 'array'],
+            'sso_provider_client_ids.*' => ['nullable', 'string', 'max:255'],
+            'sso_provider_client_secrets' => ['nullable', 'array'],
+            'sso_provider_client_secrets.*' => ['nullable', 'string', 'max:255'],
+            'sso_provider_tenant_ids' => ['nullable', 'array'],
+            'sso_provider_tenant_ids.*' => ['nullable', 'string', 'max:255'],
+            'sso_client_id' => ['nullable', 'string', 'max:255'],
             'sso_client_secret' => ['nullable', 'string', 'max:255'],
             'sso_tenant_id' => ['nullable', 'string', 'max:255'],
-            'sso_redirect_url' => ['required', 'url', 'max:2048'],
+            'sso_redirect_url' => ['nullable', 'url', 'max:2048'],
         ]);
 
-        AdminSetting::putValue('sso', 'sso_enabled', $request->boolean('sso_enabled'));
-        AdminSetting::putValue('sso', 'sso_provider', $validated['sso_provider']);
-        AdminSetting::putValue('sso', 'sso_client_id', $validated['sso_client_id']);
+        $enabledProviders = collect($request->input('sso_enabled_providers', []))
+            ->map(fn ($provider) => strtolower(trim((string) $provider)))
+            ->filter(fn ($provider) => in_array($provider, $providerKeys, true))
+            ->unique()
+            ->values()
+            ->all();
 
-        if (!empty($validated['sso_client_secret'])) {
-            AdminSetting::putValue('sso', 'sso_client_secret', $validated['sso_client_secret'], true);
+        $effectiveSsoEnabled = $request->boolean('sso_enabled') || !empty($enabledProviders);
+
+        if ($effectiveSsoEnabled && empty($enabledProviders)) {
+            return back()->withErrors([
+                'sso_enabled_providers' => 'Select at least one SSO provider when SSO is enabled.',
+            ])->withInput();
         }
 
-        AdminSetting::putValue('sso', 'sso_tenant_id', $validated['sso_tenant_id'] ?? '');
-        AdminSetting::putValue('sso', 'sso_redirect_url', $validated['sso_redirect_url']);
+        $providerUrls = collect($request->input('sso_provider_urls', []))
+            ->mapWithKeys(function ($url, $provider) use ($providerKeys) {
+                $provider = strtolower(trim((string) $provider));
+                if (!in_array($provider, $providerKeys, true)) {
+                    return [];
+                }
+
+                return [$provider => trim((string) $url)];
+            })
+            ->all();
+
+        $providerClientIds = collect($request->input('sso_provider_client_ids', []))
+            ->mapWithKeys(function ($clientId, $provider) use ($providerKeys) {
+                $provider = strtolower(trim((string) $provider));
+                if (!in_array($provider, $providerKeys, true)) {
+                    return [];
+                }
+
+                return [$provider => trim((string) $clientId)];
+            })
+            ->all();
+
+        $providerTenantIds = collect($request->input('sso_provider_tenant_ids', []))
+            ->mapWithKeys(function ($tenantId, $provider) use ($providerKeys) {
+                $provider = strtolower(trim((string) $provider));
+                if (!in_array($provider, $providerKeys, true)) {
+                    return [];
+                }
+
+                return [$provider => trim((string) $tenantId)];
+            })
+            ->all();
+
+        $existingProviderClientSecrets = [];
+        foreach ($providerKeys as $providerKey) {
+            $existingProviderClientSecrets[$providerKey] = $this->getSecretEnvValue($this->providerEnvKeyPrefix($providerKey) . '_CLIENT_SECRET', '');
+        }
+        $providerClientSecrets = [];
+        foreach ($providerKeys as $providerKey) {
+            $incomingSecret = trim((string) $request->input("sso_provider_client_secrets.$providerKey", ''));
+            if ($incomingSecret !== '') {
+                $providerClientSecrets[$providerKey] = $incomingSecret;
+                continue;
+            }
+
+            $existingSecret = trim((string) ($existingProviderClientSecrets[$providerKey] ?? ''));
+            if ($existingSecret !== '') {
+                $providerClientSecrets[$providerKey] = $existingSecret;
+            }
+        }
+
+        $envUpdates = [
+            'SSO_ENABLED' => $effectiveSsoEnabled ? 'true' : 'false',
+            'SSO_ENABLED_PROVIDERS' => implode(',', $enabledProviders),
+        ];
+
+        foreach ($providerKeys as $providerKey) {
+            $prefix = $this->providerEnvKeyPrefix($providerKey);
+            $envUpdates[$prefix . '_URL'] = (string) ($providerUrls[$providerKey] ?? '');
+            $envUpdates[$prefix . '_CLIENT_ID'] = (string) ($providerClientIds[$providerKey] ?? '');
+            $envUpdates[$prefix . '_CLIENT_SECRET'] = $this->encryptSecretForEnvironment((string) ($providerClientSecrets[$providerKey] ?? ''));
+            $envUpdates[$prefix . '_TENANT_ID'] = (string) ($providerTenantIds[$providerKey] ?? '');
+        }
+
+        $this->setEnvironmentValues($envUpdates);
 
         return redirect()->route('admin.settings', ['tab' => 'sso'])->with('success', 'SSO settings saved successfully.');
     }
@@ -418,5 +744,605 @@ class AdminDashboardController extends Controller
         $decoded = json_decode((string) $value, true);
 
         return is_array($decoded) ? $decoded : $default;
+    }
+
+    private function resolveSsoSettingsFromEnvironment(array $providerOptions): array
+    {
+        $providerKeys = array_keys($providerOptions);
+        $enabledProviders = $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
+
+        $providerUrls = [];
+        $providerClientIds = [];
+        $providerClientSecrets = [];
+        $providerTenantIds = [];
+
+        foreach ($providerKeys as $providerKey) {
+            $prefix = $this->providerEnvKeyPrefix($providerKey);
+            $providerUrls[$providerKey] = $this->getEnvValue($prefix . '_URL', '');
+            $providerClientIds[$providerKey] = $this->getEnvValue($prefix . '_CLIENT_ID', '');
+            $providerClientSecrets[$providerKey] = $this->getSecretEnvValue($prefix . '_CLIENT_SECRET', '');
+            $providerTenantIds[$providerKey] = $this->getEnvValue($prefix . '_TENANT_ID', '');
+        }
+
+        $ssoEnabled = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL) || !empty($enabledProviders);
+
+        return [
+            'enabled' => $ssoEnabled,
+            'enabled_providers' => $enabledProviders,
+            'provider_urls' => $providerUrls,
+            'provider_client_ids' => $providerClientIds,
+            'provider_client_secrets' => $providerClientSecrets,
+            'provider_tenant_ids' => $providerTenantIds,
+        ];
+    }
+
+    private function resolveEnabledSsoProvidersFromEnvironment(array $providerKeys): array
+    {
+        $raw = $this->getEnvValue('SSO_ENABLED_PROVIDERS', '');
+        if ($raw === '') {
+            return [];
+        }
+
+        return collect(explode(',', $raw))
+            ->map(fn (string $provider) => strtolower(trim($provider)))
+            ->filter(fn (string $provider) => in_array($provider, $providerKeys, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function providerEnvKeyPrefix(string $provider): string
+    {
+        $normalized = strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '_', strtolower(trim($provider))));
+        $normalized = trim($normalized, '_');
+
+        return 'SSO_' . $normalized;
+    }
+
+    private function resolveStorageDisk(): string
+    {
+        $s3Enabled = $this->isS3Enabled();
+
+        if (!$s3Enabled) {
+            return 'public';
+        }
+
+        $credentials = $this->resolveS3RuntimeCredentials();
+        $key = $credentials['key'];
+        $secret = $credentials['secret'];
+        $region = $credentials['region'];
+        $bucket = $credentials['bucket'];
+
+        if ($key === '' || $secret === '' || $region === '' || $bucket === '') {
+            return 'public';
+        }
+
+        Config::set('filesystems.disks.s3.key', $key);
+        Config::set('filesystems.disks.s3.secret', $secret);
+        Config::set('filesystems.disks.s3.region', $region);
+        Config::set('filesystems.disks.s3.bucket', $bucket);
+
+        return 's3';
+    }
+
+    private function resolveSiteLogoUrl(): string
+    {
+        $overrideUrl = trim((string) AdminSetting::getValue('site_logo_url', ''));
+        if ($overrideUrl !== '') {
+            return $overrideUrl;
+        }
+
+        $storedPath = trim((string) AdminSetting::getValue('site_logo_path', ''));
+        if ($storedPath === '') {
+            return '';
+        }
+
+        return $this->buildStorageObjectUrl($this->resolveStorageDisk(), $storedPath);
+    }
+
+    private function buildStorageObjectUrl(string $disk, string $path): string
+    {
+        $normalizedPath = ltrim($path, '/');
+        if ($normalizedPath === '') {
+            return '';
+        }
+
+        if ($disk === 's3') {
+            return route('site.logo', ['path' => $normalizedPath]);
+        }
+
+        $baseUrl = $this->resolveStorageBaseUrl($disk);
+
+        if ($baseUrl !== '') {
+            return rtrim($baseUrl, '/') . '/' . $normalizedPath;
+        }
+
+        if (in_array($disk, ['public', 'local'], true)) {
+            return Storage::url($normalizedPath);
+        }
+
+        if ($disk === 's3') {
+            return $this->buildS3ObjectUrl($normalizedPath);
+        }
+
+        return $normalizedPath;
+    }
+
+    private function resolveStorageBaseUrl(string $disk): string
+    {
+        $normalizedDisk = strtolower(trim($disk));
+
+        if ($normalizedDisk === 's3') {
+            $configured = trim($this->getEnvValue('S3_STORAGE_BASE_URL', ''));
+            if ($configured !== '') {
+                return $configured;
+            }
+
+            $credentials = $this->resolveS3RuntimeCredentials();
+            if ($credentials['bucket'] !== '' && $credentials['region'] !== '') {
+                return sprintf('https://%s.s3.%s.amazonaws.com/', $credentials['bucket'], $credentials['region']);
+            }
+
+            return '';
+        }
+
+        $configured = trim($this->getEnvValue('LOCAL_STORAGE_BASE_URL', ''));
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        $siteUrl = rtrim((string) config('app.url', ''), '/');
+
+        return $siteUrl !== '' ? $siteUrl . '/storage' : '';
+    }
+
+    private function syncStorageBaseUrlsToDatabase(): void
+    {
+        $siteUrl = rtrim((string) config('app.url', ''), '/');
+        $localStorageBaseUrl = $siteUrl !== '' ? $siteUrl . '/storage' : '';
+
+        $s3Enabled = $this->isS3Enabled();
+        $credentials = $this->resolveS3RuntimeCredentials();
+        $bucket = $credentials['bucket'];
+        $region = $credentials['region'];
+        $s3StorageBaseUrl = '';
+
+        if ($s3Enabled && $bucket !== '' && $region !== '') {
+            $s3StorageBaseUrl = sprintf('https://%s.s3.%s.amazonaws.com/', $bucket, $region);
+        }
+
+        $this->setEnvironmentValues([
+            'LOCAL_STORAGE_BASE_URL' => $localStorageBaseUrl,
+            'S3_STORAGE_BASE_URL' => $s3StorageBaseUrl,
+            'VERSION' => (string) config('app.version', '0.1.0'),
+        ]);
+
+        AdminSetting::putValue('storage', 'site_url', $siteUrl);
+    }
+
+    private function analyzeStorageMigrationDirection(string $direction): array
+    {
+        $entries = $this->buildMigrationEntries($direction);
+
+        $sourceFilesFound = 0;
+        $filesPendingMigration = 0;
+        $missingSourceFiles = 0;
+        $folders = [];
+        $localFilesFound = 0;
+        $s3FilesFound = 0;
+
+        foreach ($entries as &$entry) {
+            $sourceExists = Storage::disk($entry['source_disk'])->exists($entry['path']);
+            $destinationExists = Storage::disk($entry['destination_disk'])->exists($entry['path']);
+
+            if (Storage::disk('local')->exists($entry['path']) || Storage::disk('public')->exists($entry['path'])) {
+                $localFilesFound++;
+            }
+            if (Storage::disk('s3')->exists($entry['path'])) {
+                $s3FilesFound++;
+            }
+
+            $entry['source_exists'] = $sourceExists;
+            $entry['destination_exists'] = $destinationExists;
+
+            if (!$sourceExists) {
+                $missingSourceFiles++;
+                continue;
+            }
+
+            $sourceFilesFound++;
+
+            if (!$destinationExists) {
+                $filesPendingMigration++;
+                $folders[dirname($entry['path'])] = true;
+            }
+        }
+
+        return [
+            'direction' => $direction,
+            'total_tracked_files' => count($entries),
+            'source_files_found' => $sourceFilesFound,
+            'missing_source_files' => $missingSourceFiles,
+            'files_pending_migration' => $filesPendingMigration,
+            'folders_pending_migration' => count(array_filter(array_keys($folders), fn ($folder) => $folder !== '.' && $folder !== '')),
+            'local_files_found' => $localFilesFound,
+            's3_files_found' => $s3FilesFound,
+            'entries' => $entries,
+        ];
+    }
+
+    private function executeStorageMigration(string $direction, array $entries, bool $keepSource = true): array
+    {
+        $errors = [];
+        $warnings = [];
+        $migrated = 0;
+        $verified = 0;
+        $failedVerification = 0;
+        $sourceDeleted = 0;
+        $processed = 0;
+        $total = count($entries);
+
+        AdminSetting::putValue('storage', 'migration_status', 'in_progress');
+        AdminSetting::putValue('storage', 'migration_progress', [
+            'processed' => 0,
+            'total' => $total,
+            'percent' => 0,
+            'direction' => $direction,
+            'started_at' => now()->toDateTimeString(),
+        ]);
+
+        foreach ($entries as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            $path = (string) ($entry['path'] ?? '');
+            $sourceDisk = (string) ($entry['source_disk'] ?? '');
+            $destinationDisk = (string) ($entry['destination_disk'] ?? '');
+
+            if ($path === '' || $sourceDisk === '' || $destinationDisk === '') {
+                $processed++;
+                continue;
+            }
+
+            $sourceExists = Storage::disk($sourceDisk)->exists($path);
+            $destinationExists = Storage::disk($destinationDisk)->exists($path);
+
+            if (!$sourceExists) {
+                $warnings[] = "Missing source file (skipped): {$path} on {$sourceDisk}";
+                $processed++;
+                AdminSetting::putValue('storage', 'migration_progress', [
+                    'processed' => $processed,
+                    'total' => $total,
+                    'percent' => $total > 0 ? (int) floor(($processed / $total) * 100) : 100,
+                    'direction' => $direction,
+                    'started_at' => now()->toDateTimeString(),
+                ]);
+                continue;
+            }
+
+            if (!$destinationExists) {
+                try {
+                    $stream = Storage::disk($sourceDisk)->readStream($path);
+                    if ($stream === false) {
+                        $errors[] = "Cannot read source stream: {$path}";
+                        $processed++;
+                        continue;
+                    }
+
+                    $writeOptions = [];
+                    if ($destinationDisk === 's3') {
+                        $writeOptions['visibility'] = 'public';
+                    }
+
+                    $written = Storage::disk($destinationDisk)->writeStream($path, $stream, $writeOptions);
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+
+                    if (!$written) {
+                        $errors[] = "Cannot write destination stream: {$path}";
+                        $processed++;
+                        continue;
+                    }
+
+                    $migrated++;
+                } catch (\Throwable $e) {
+                    $errors[] = "Migration failed for {$path}: {$e->getMessage()}";
+                    $processed++;
+                    continue;
+                }
+            }
+
+            try {
+                if (!Storage::disk($destinationDisk)->exists($path)) {
+                    $failedVerification++;
+                    $errors[] = "Verification failed (destination missing): {$path}";
+                    continue;
+                }
+
+                $sourceChecksum = md5((string) Storage::disk($sourceDisk)->get($path));
+                $destinationChecksum = md5((string) Storage::disk($destinationDisk)->get($path));
+
+                if ($sourceChecksum !== $destinationChecksum) {
+                    $failedVerification++;
+                    $errors[] = "Verification checksum mismatch: {$path}";
+                    continue;
+                }
+
+                $verified++;
+
+                if (!$keepSource && $sourceDisk !== $destinationDisk) {
+                    try {
+                        if (Storage::disk($sourceDisk)->delete($path)) {
+                            $sourceDeleted++;
+                        } else {
+                            $warnings[] = "Could not delete source file after migration: {$path} ({$sourceDisk})";
+                        }
+                    } catch (\Throwable $e) {
+                        $warnings[] = "Source delete error for {$path}: {$e->getMessage()}";
+                    }
+                }
+            } catch (\Throwable $e) {
+                $failedVerification++;
+                $errors[] = "Verification error for {$path}: {$e->getMessage()}";
+            }
+
+            $processed++;
+            AdminSetting::putValue('storage', 'migration_progress', [
+                'processed' => $processed,
+                'total' => $total,
+                'percent' => $total > 0 ? (int) floor(($processed / $total) * 100) : 100,
+                'direction' => $direction,
+                'started_at' => now()->toDateTimeString(),
+            ]);
+        }
+
+        AdminSetting::putValue('storage', 'migration_status', empty($errors) ? 'completed' : 'completed_with_errors');
+        AdminSetting::putValue('storage', 'migration_progress', [
+            'processed' => $processed,
+            'total' => $total,
+            'percent' => 100,
+            'direction' => $direction,
+            'started_at' => now()->toDateTimeString(),
+            'completed_at' => now()->toDateTimeString(),
+        ]);
+
+        return [
+            'direction' => $direction,
+            'keep_source' => $keepSource,
+            'migrated_files' => $migrated,
+            'verified_files' => $verified,
+            'failed_verification' => $failedVerification,
+            'source_deleted_files' => $sourceDeleted,
+            'processed_files' => $processed,
+            'total_files' => $total,
+            'progress_percent' => 100,
+            'warnings' => $warnings,
+            'errors' => $errors,
+        ];
+    }
+
+    private function buildMigrationEntries(string $direction): array
+    {
+        $entries = [];
+        $seen = [];
+
+        $logoPath = trim((string) AdminSetting::getValue('site_logo_path', ''));
+        if ($logoPath !== '') {
+            $logoEntry = $direction === 'local_to_s3'
+                ? ['type' => 'logo', 'path' => ltrim($logoPath, '/'), 'source_disk' => 'public', 'destination_disk' => 's3']
+                : ['type' => 'logo', 'path' => ltrim($logoPath, '/'), 'source_disk' => 's3', 'destination_disk' => 'public'];
+
+            $key = $logoEntry['type'] . '|' . $logoEntry['path'] . '|' . $logoEntry['source_disk'] . '|' . $logoEntry['destination_disk'];
+            $entries[] = $logoEntry;
+            $seen[$key] = true;
+        }
+
+        $configPaths = ConfigurationFile::query()
+            ->whereNotNull('file_location')
+            ->where('file_location', '!=', '')
+            ->pluck('file_location')
+            ->all();
+
+        foreach ($configPaths as $configPath) {
+            $normalizedPath = ltrim((string) $configPath, '/');
+            if ($normalizedPath === '') {
+                continue;
+            }
+
+            $entry = $direction === 'local_to_s3'
+                ? ['type' => 'configuration_file', 'path' => $normalizedPath, 'source_disk' => 'local', 'destination_disk' => 's3']
+                : ['type' => 'configuration_file', 'path' => $normalizedPath, 'source_disk' => 's3', 'destination_disk' => 'local'];
+
+            $key = $entry['type'] . '|' . $entry['path'] . '|' . $entry['source_disk'] . '|' . $entry['destination_disk'];
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $entries[] = $entry;
+            $seen[$key] = true;
+        }
+
+        if ($this->configureS3DiskFromSettings() === false && in_array($direction, ['local_to_s3', 's3_to_local'], true)) {
+            return [];
+        }
+
+        return $entries;
+    }
+
+    private function configureS3DiskFromSettings(): bool
+    {
+        $credentials = $this->resolveS3RuntimeCredentials();
+        $key = $credentials['key'];
+        $secret = $credentials['secret'];
+        $region = $credentials['region'];
+        $bucket = $credentials['bucket'];
+
+        if ($key === '' || $secret === '' || $region === '' || $bucket === '') {
+            return false;
+        }
+
+        Config::set('filesystems.disks.s3.key', $key);
+        Config::set('filesystems.disks.s3.secret', $secret);
+        Config::set('filesystems.disks.s3.region', $region);
+        Config::set('filesystems.disks.s3.bucket', $bucket);
+
+        return true;
+    }
+
+    private function resolveS3RuntimeCredentials(): array
+    {
+        $key = trim((string) config('filesystems.disks.s3.key', $this->getEnvValue('AWS_ACCESS_KEY_ID', '')));
+        $secret = trim((string) config('filesystems.disks.s3.secret', $this->getSecretEnvValue('AWS_SECRET_ACCESS_KEY', '')));
+        $region = trim((string) config('filesystems.disks.s3.region', $this->getEnvValue('AWS_DEFAULT_REGION', '')));
+        $bucket = trim((string) config('filesystems.disks.s3.bucket', $this->getEnvValue('AWS_BUCKET', '')));
+
+        return [
+            'key' => $key,
+            'secret' => $secret,
+            'region' => $region,
+            'bucket' => $bucket,
+        ];
+    }
+
+    private function getEnvValue(string $key, string $default = ''): string
+    {
+        $value = env($key);
+        if ($value !== null && $value !== false) {
+            return trim((string) $value);
+        }
+
+        $runtime = getenv($key);
+        if ($runtime !== false) {
+            return trim((string) $runtime);
+        }
+
+        return trim($default);
+    }
+
+    private function getSecretEnvValue(string $key, string $default = ''): string
+    {
+        return $this->decryptSecretFromEnvironment($this->getEnvValue($key, $default));
+    }
+
+    private function isS3Enabled(): bool
+    {
+        return filter_var($this->getEnvValue('S3_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+    }
+
+    private function encryptSecretForEnvironment(string $value): string
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (str_starts_with($trimmed, 'ENC:')) {
+            return $trimmed;
+        }
+
+        return 'ENC:' . Crypt::encryptString($trimmed);
+    }
+
+    private function decryptSecretFromEnvironment(string $value): string
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (!str_starts_with($trimmed, 'ENC:')) {
+            return $trimmed;
+        }
+
+        try {
+            return trim(Crypt::decryptString(substr($trimmed, 4)));
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    private function setEnvironmentValues(array $values): void
+    {
+        $envPath = base_path('.env');
+        if (!File::exists($envPath) || !File::isWritable($envPath)) {
+            return;
+        }
+
+        $contents = File::get($envPath);
+        $originalContents = $contents;
+        $effectiveUpdates = [];
+
+        foreach ($values as $key => $rawValue) {
+            $value = trim((string) ($rawValue ?? ''));
+            $line = $key . '=' . $this->formatEnvValue($value);
+            $pattern = "/^" . preg_quote($key, '/') . "=.*/m";
+            $existingValue = $this->getEnvValue($key, '');
+
+            if (preg_match($pattern, $contents) === 1) {
+                $contents = preg_replace($pattern, $line, $contents, 1) ?? $contents;
+            } else {
+                $contents = rtrim($contents, "\r\n") . PHP_EOL . $line . PHP_EOL;
+            }
+
+            if ($existingValue !== $value) {
+                $effectiveUpdates[$key] = $value;
+            }
+
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
+
+        if ($contents !== $originalContents) {
+            File::put($envPath, $contents);
+        }
+
+        foreach ($effectiveUpdates as $key => $value) {
+            putenv($key . '=' . $value);
+        }
+    }
+
+    private function formatEnvValue(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/\s|#|"/', $value) === 1) {
+            return '"' . str_replace('"', '\\"', $value) . '"';
+        }
+
+        return $value;
+    }
+
+    private function hasStorageDiskColumn(): bool
+    {
+        static $hasColumn;
+
+        if ($hasColumn !== null) {
+            return $hasColumn;
+        }
+
+        $hasColumn = DB::getSchemaBuilder()->hasColumn('configuration_files', 'storage_disk');
+
+        return $hasColumn;
+    }
+
+    private function buildS3ObjectUrl(string $path): string
+    {
+        $customUrl = trim((string) config('filesystems.disks.s3.url', ''));
+        if ($customUrl !== '') {
+            return rtrim($customUrl, '/') . '/' . ltrim($path, '/');
+        }
+
+        $bucket = trim((string) config('filesystems.disks.s3.bucket', ''));
+        $region = trim((string) config('filesystems.disks.s3.region', ''));
+
+        if ($bucket === '' || $region === '') {
+            return $path;
+        }
+
+        return sprintf('https://%s.s3.%s.amazonaws.com/%s', $bucket, $region, ltrim($path, '/'));
     }
 }

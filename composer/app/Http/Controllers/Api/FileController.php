@@ -7,7 +7,10 @@ use App\Models\ConfigurationFile;
 use App\Models\RawData;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -73,12 +76,14 @@ class FileController extends Controller
         
         // Define storage path: config_files/{user_id}/
         $storagePath = "config_files/{$user->id}";
-        
-        // Store file in Laravel storage (storage/app/config_files/{user_id}/)
-        $filePath = $file->storeAs($storagePath, $fileName);
-        
+
+        $storageDisk = $this->resolveStorageDisk();
+
+        // Store file in configured disk
+        $filePath = $file->storeAs($storagePath, $fileName, $storageDisk);
+
         // Read file content for raw_data table
-        $fileContent = Storage::get($filePath);
+        $fileContent = Storage::disk($storageDisk)->get($filePath);
 
         $service = null;
 
@@ -126,8 +131,8 @@ class FileController extends Controller
             $service->save();
         }
         
-        $configFile = DB::transaction(function () use ($user, $systemId, $service, $originalName, $serviceName, $filePath, $request, $fileContent) {
-            $configFile = ConfigurationFile::create([
+        $configFile = DB::transaction(function () use ($user, $systemId, $service, $originalName, $serviceName, $filePath, $storageDisk, $request, $fileContent) {
+            $payload = [
                 'user_id' => $user->id,
                 'system_register_id' => $systemId,
                 'service_id' => $service->service_id,
@@ -136,7 +141,13 @@ class FileController extends Controller
                 'file_location' => $filePath,
                 'validation_hash' => $request->input('validation_hash'),
                 'version' => $request->input('version'),
-            ]);
+            ];
+
+            if ($this->hasStorageDiskColumn()) {
+                $payload['storage_disk'] = $storageDisk;
+            }
+
+            $configFile = ConfigurationFile::create($payload);
 
             RawData::create([
                 'file_id' => $configFile->id,
@@ -153,6 +164,8 @@ class FileController extends Controller
             return $configFile;
         });
 
+        $fileMetadata = $this->resolveFileLocationMetadata($configFile->storage_disk ?? null, (string) $configFile->file_location);
+
         return response()->json([
             'message' => 'Configuration file uploaded successfully',
             'file' => [
@@ -160,6 +173,10 @@ class FileController extends Controller
                 'file_name' => $configFile->file_name,
                 'original_name' => $originalName,
                 'file_location' => $configFile->file_location,
+            'storage_disk' => $fileMetadata['disk'],
+            'file_relative_path' => $fileMetadata['path'],
+            'storage_base_url' => $this->resolveStorageBaseUrl($fileMetadata['disk']),
+            'file_url' => $this->buildFileUrl($fileMetadata['disk'], $fileMetadata['path']),
                 'file_size' => strlen($fileContent),
                 'system_register_id' => $configFile->system_register_id,
                 'service_id' => $configFile->service_id,
@@ -180,15 +197,23 @@ class FileController extends Controller
 
         $user = $request->user();
 
-        // Generate unique file location
+        // Generate unique file location (relative path only)
         $fileLocation = 'uploads/' . $user->id . '/' . Str::uuid() . '_' . $data['file_name'];
 
-        // Create configuration file record
-        $configFile = ConfigurationFile::create([
+        $payload = [
             'user_id' => $user->id,
             'file_name' => $data['file_name'],
             'file_location' => $fileLocation,
-        ]);
+        ];
+
+        if ($this->hasStorageDiskColumn()) {
+            $payload['storage_disk'] = 'local';
+        }
+
+        // Create configuration file record
+        $configFile = ConfigurationFile::create($payload);
+
+        $fileMetadata = $this->resolveFileLocationMetadata($configFile->storage_disk ?? null, (string) $configFile->file_location);
 
         // Store raw data
         RawData::create([
@@ -204,6 +229,10 @@ class FileController extends Controller
                 'id' => $configFile->id,
                 'file_name' => $configFile->file_name,
                 'file_location' => $configFile->file_location,
+                'storage_disk' => $fileMetadata['disk'],
+                'file_relative_path' => $fileMetadata['path'],
+                'storage_base_url' => $this->resolveStorageBaseUrl($fileMetadata['disk']),
+                'file_url' => $this->buildFileUrl($fileMetadata['disk'], $fileMetadata['path']),
                 'created_at' => $configFile->created_at,
             ],
         ], 201);
@@ -224,6 +253,7 @@ class FileController extends Controller
                 'id' => $configFile->id,
                 'file_name' => $configFile->file_name,
                 'file_location' => $configFile->file_location,
+                'storage_disk' => $this->resolveFileLocationMetadata($configFile->storage_disk ?? null, (string) $configFile->file_location)['disk'],
                 'file_data' => $configFile->rawData->file_data,
                 'created_at' => $configFile->created_at,
                 'updated_at' => $configFile->updated_at,
@@ -243,6 +273,8 @@ class FileController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($file) {
+                $location = $this->resolveFileLocationMetadata($file->storage_disk ?? null, (string) $file->file_location);
+
                 return [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
@@ -252,6 +284,10 @@ class FileController extends Controller
                     'validation_hash' => $file->validation_hash,
                     'version' => $file->version,
                     'file_location' => $file->file_location,
+                    'storage_disk' => $location['disk'],
+                    'file_relative_path' => $location['path'],
+                    'storage_base_url' => $this->resolveStorageBaseUrl($location['disk']),
+                    'file_url' => $this->buildFileUrl($location['disk'], $location['path']),
                     'status' => $file->status,
                     'created_at' => $file->created_at,
                     'updated_at' => $file->updated_at,
@@ -283,6 +319,8 @@ class FileController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($file) {
+                $location = $this->resolveFileLocationMetadata($file->storage_disk ?? null, (string) $file->file_location);
+
                 return [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
@@ -292,6 +330,10 @@ class FileController extends Controller
                     'validation_hash' => $file->validation_hash,
                     'version' => $file->version,
                     'file_location' => $file->file_location,
+                    'storage_disk' => $location['disk'],
+                    'file_relative_path' => $location['path'],
+                    'storage_base_url' => $this->resolveStorageBaseUrl($location['disk']),
+                    'file_url' => $this->buildFileUrl($location['disk'], $location['path']),
                     'status' => $file->status,
                     'created_at' => $file->created_at,
                     'updated_at' => $file->updated_at,
@@ -320,15 +362,17 @@ class FileController extends Controller
             ->firstOrFail();
 
         // Check if file exists in storage
-        if (!Storage::exists($configFile->file_location)) {
+        [$disk, $path] = $this->resolveDiskAndPath($configFile->storage_disk ?? null, (string) $configFile->file_location);
+
+        if (!Storage::disk($disk)->exists($path)) {
             return response()->json([
                 'message' => 'File not found in storage',
             ], 404);
         }
 
         // Get file content
-        $fileContent = Storage::get($configFile->file_location);
-        $mimeType = Storage::mimeType($configFile->file_location);
+        $fileContent = Storage::disk($disk)->get($path);
+        $mimeType = 'application/octet-stream';
 
         // Return file as download
         return response($fileContent, 200)
@@ -359,14 +403,16 @@ class FileController extends Controller
             ], 404);
         }
 
-        if (!Storage::exists($configFile->file_location)) {
+        [$disk, $path] = $this->resolveDiskAndPath($configFile->storage_disk ?? null, (string) $configFile->file_location);
+
+        if (!Storage::disk($disk)->exists($path)) {
             return response()->json([
                 'message' => 'File not found in storage',
             ], 404);
         }
 
-        $fileContent = Storage::get($configFile->file_location);
-        $mimeType = Storage::mimeType($configFile->file_location);
+        $fileContent = Storage::disk($disk)->get($path);
+        $mimeType = 'application/octet-stream';
 
         return response($fileContent, 200)
             ->header('Content-Type', $mimeType)
@@ -448,5 +494,146 @@ class FileController extends Controller
                 'updated_at' => $configFile->updated_at,
             ],
         ]);
+    }
+
+    private function resolveStorageDisk(): string
+    {
+        $s3Enabled = filter_var((string) env('S3_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+
+        if (!$s3Enabled) {
+            return 'local';
+        }
+
+        $key = trim((string) config('filesystems.disks.s3.key', env('AWS_ACCESS_KEY_ID', '')));
+        $secret = trim((string) config('filesystems.disks.s3.secret', $this->resolveAwsSecretFromEnv()));
+        $region = trim((string) config('filesystems.disks.s3.region', env('AWS_DEFAULT_REGION', '')));
+        $bucket = trim((string) config('filesystems.disks.s3.bucket', env('AWS_BUCKET', '')));
+
+        if ($key === '' || $secret === '' || $region === '' || $bucket === '') {
+            return 'local';
+        }
+
+        Config::set('filesystems.disks.s3.key', $key);
+        Config::set('filesystems.disks.s3.secret', $secret);
+        Config::set('filesystems.disks.s3.region', $region);
+        Config::set('filesystems.disks.s3.bucket', $bucket);
+
+        return 's3';
+    }
+
+    private function resolveAwsSecretFromEnv(): string
+    {
+        $raw = trim((string) env('AWS_SECRET_ACCESS_KEY', ''));
+        if ($raw === '') {
+            return '';
+        }
+
+        if (!str_starts_with($raw, 'ENC:')) {
+            return $raw;
+        }
+
+        try {
+            return trim(Crypt::decryptString(substr($raw, 4)));
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    private function resolveDiskAndPath(?string $storageDisk, string $storedLocation): array
+    {
+        $path = ltrim($storedLocation, '/');
+        $activeDisk = $this->resolveStorageDisk();
+        $legacy = $this->resolveLegacyDiskAndPath($storageDisk, $storedLocation);
+
+        if ($path === '' && isset($legacy[1])) {
+            $path = ltrim((string) $legacy[1], '/');
+        }
+
+        if ($path === '') {
+            return [$activeDisk, $path];
+        }
+
+        if (Storage::disk($activeDisk)->exists($path)) {
+            return [$activeDisk, $path];
+        }
+
+        return [$legacy[0], ltrim((string) $legacy[1], '/')];
+    }
+
+    private function resolveFileLocationMetadata(?string $storageDisk, string $storedLocation): array
+    {
+        [$disk, $path] = $this->resolveDiskAndPath($storageDisk, $storedLocation);
+
+        return [
+            'disk' => $disk,
+            'path' => $path,
+        ];
+    }
+
+    private function resolveStorageBaseUrl(string $disk): string
+    {
+        $activeDisk = $this->resolveStorageDisk();
+
+        if (strtolower($activeDisk) === 's3') {
+            $configured = trim((string) env('S3_STORAGE_BASE_URL', ''));
+            if ($configured !== '') {
+                return $configured;
+            }
+
+            $bucket = trim((string) config('filesystems.disks.s3.bucket', env('AWS_BUCKET', '')));
+            $region = trim((string) config('filesystems.disks.s3.region', env('AWS_DEFAULT_REGION', '')));
+
+            if ($bucket !== '' && $region !== '') {
+                return sprintf('https://%s.s3.%s.amazonaws.com/', $bucket, $region);
+            }
+
+            return '';
+        }
+
+        $configured = trim((string) env('LOCAL_STORAGE_BASE_URL', ''));
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        $siteUrl = rtrim((string) config('app.url', ''), '/');
+
+        return $siteUrl !== '' ? $siteUrl . '/storage' : '';
+    }
+
+    private function buildFileUrl(string $disk, string $path): string
+    {
+        $baseUrl = $this->resolveStorageBaseUrl($disk);
+        if ($baseUrl === '') {
+            return $path;
+        }
+
+        return rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
+    }
+
+    private function hasStorageDiskColumn(): bool
+    {
+        static $hasColumn;
+
+        if ($hasColumn !== null) {
+            return $hasColumn;
+        }
+
+        $hasColumn = Schema::hasColumn('configuration_files', 'storage_disk');
+
+        return $hasColumn;
+    }
+
+    private function resolveLegacyDiskAndPath(?string $storageDisk, string $storedLocation): array
+    {
+        $explicitDisk = strtolower(trim((string) $storageDisk));
+        if ($explicitDisk !== '') {
+            return [$explicitDisk, ltrim($storedLocation, '/')];
+        }
+
+        if (preg_match('/^([a-z0-9_-]+):\/\/(.+)$/i', $storedLocation, $matches)) {
+            return [strtolower($matches[1]), $matches[2]];
+        }
+
+        return ['local', $storedLocation];
     }
 }

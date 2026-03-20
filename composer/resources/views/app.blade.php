@@ -167,6 +167,23 @@
             background: #e0e0e0;
         }
 
+        .sso-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-sso {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+
         .divider {
             text-align: center;
             margin: 20px 0;
@@ -501,6 +518,13 @@
                         </div>
                         @endif
 
+                        @if (session('inactive_user'))
+                        <div class="alert alert-error">
+                            <i class="fas fa-user-slash"></i>
+                            <span>{{ session('inactive_user') }}</span>
+                        </div>
+                        @endif
+
                         <div class="form-group">
                             <label for="login_email"><i class="fas fa-envelope"></i> Email Address</label>
                             <input type="email" id="login_email" name="email" placeholder="you@example.com" required value="{{ old('email') }}">
@@ -521,6 +545,18 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-sign-in-alt"></i> Login
                         </button>
+
+                        @if(!empty($ssoProvidersForAuth ?? []))
+                            <div class="divider">Or continue with SSO</div>
+                            <div class="sso-grid">
+                                @foreach($ssoProvidersForAuth as $ssoProvider)
+                                    <a class="btn btn-secondary btn-sso" href="{{ route('auth.sso.redirect', ['provider' => $ssoProvider['key'], 'context' => 'login']) }}">
+                                        <i class="{{ $ssoProvider['icon'] }}"></i>
+                                        <span>Continue with {{ $ssoProvider['label'] }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
                     </form>
                 </div>
 
@@ -558,6 +594,18 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-user-plus"></i> Create Account
                         </button>
+
+                        @if(!empty($ssoProvidersForAuth ?? []))
+                            <div class="divider">Or register with SSO</div>
+                            <div class="sso-grid">
+                                @foreach($ssoProvidersForAuth as $ssoProvider)
+                                    <a class="btn btn-secondary btn-sso" href="{{ route('auth.sso.redirect', ['provider' => $ssoProvider['key'], 'context' => 'register']) }}">
+                                        <i class="{{ $ssoProvider['icon'] }}"></i>
+                                        <span>Register with {{ $ssoProvider['label'] }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
                     </form>
                 </div>
 
@@ -597,17 +645,21 @@
 
             <!-- Dashboard Nav (shown after login) -->
             <div id="dashboardNav" class="hidden" style="margin-top: 40px; padding-top: 40px; border-top: 1px solid #e0e0e0;">
+                @php($requiresProfileSetup = auth()->check() && (!auth()->user()->dob || !auth()->user()->pin))
                 <div style="margin-bottom: 30px;">
                     <p style="font-size: 12px; color: #999; margin-bottom: 10px; text-transform: uppercase; font-weight: 600;">Menu</p>
+                    @if($requiresProfileSetup)
+                        <div style="margin-bottom: 12px; padding: 10px; border-radius: 6px; background: #fff3cd; border: 1px solid #ffe69c; color: #664d03; font-size: 12px; font-weight: 600;">
+                            Complete mandatory profile setup to unlock all pages.
+                        </div>
+                    @endif
                     <nav style="display: flex; flex-direction: column; gap: 10px;">
+                        @if(!$requiresProfileSetup)
                         <a href="{{ route('dashboard') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
                             <i class="fas fa-chart-line"></i> Dashboard
                         </a>
                         <a href="{{ route('settings') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
                             <i class="fas fa-cog"></i> Settings
-                        </a>
-                        <a href="{{ route('profile') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
-                            <i class="fas fa-user-circle"></i> Profile
                         </a>
                         @if(auth()->check() && in_array((int) auth()->user()->rbac_id, [100, 101], true))
                         <a href="{{ route('admin.users') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
@@ -623,6 +675,10 @@
                             <i class="fas fa-file-code"></i> Configuration Backups
                         </a>
                         @endif
+                        @endif
+                        <a href="{{ route('profile') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-user-circle"></i> Profile
+                        </a>
                     </nav>
                 </div>
 
@@ -633,7 +689,7 @@
                     </button>
                 </form>
                 <div style="margin-top:8px; text-align:center; font-size:11px; color:#9ca3af;">
-                    Version {{ config('app.version') }}
+                    Version {{ $appVersion ?? config('app.version') }}
                 </div>
             </div>
         </div>
@@ -664,7 +720,7 @@
 
                 <footer style="margin-top:24px; padding:14px 8px; border-top:1px solid #e5e7eb; color:#6b7280; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
                     <span>AtGlance Dashboard</span>
-                    <span>Version {{ config('app.version') }}</span>
+                    <span>Version {{ $appVersion ?? config('app.version') }}</span>
                 </footer>
             @else
                 <!-- PUBLIC HEADER -->
@@ -849,6 +905,12 @@
                 logoutForm.submit();
             }
         }
+
+        @if (session('inactive_user'))
+            window.addEventListener('DOMContentLoaded', function () {
+                alert(@json(session('inactive_user')));
+            });
+        @endif
     </script>
 
 </body>

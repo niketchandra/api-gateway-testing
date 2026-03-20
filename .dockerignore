@@ -1,0 +1,8 @@
+composer/public/storage
+# composer/vendor
+# composer/node_modules
+# composer/storage/logs/*.log
+# composer/storage/framework/cache/data/*
+# composer/storage/framework/sessions/*
+# composer/storage/framework/views/*
+# composer/.env

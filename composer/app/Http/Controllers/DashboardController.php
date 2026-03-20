@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use App\Models\User;
 use App\Models\PatToken;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
@@ -320,6 +322,14 @@ class DashboardController extends Controller
             abort(404, 'Configuration file not found');
         }
 
+        [$disk, $path] = $this->resolveDiskAndPathForRead($config->storage_disk ?? null, (string) ($config->file_location ?? ''));
+        if ($path !== '' && Storage::disk($disk)->exists($path)) {
+            $content = Storage::disk($disk)->get($path);
+            if ($content !== false && $content !== null) {
+                $config->data = $content;
+            }
+        }
+
         // Return view with configuration data
         return view('view-configuration', compact('config'));
     }
@@ -337,6 +347,23 @@ class DashboardController extends Controller
 
         if (!$config) {
             abort(404, 'Configuration file not found');
+        }
+
+        [$disk, $path] = $this->resolveDiskAndPathForRead($config->storage_disk ?? null, (string) ($config->file_location ?? ''));
+
+        if ($path !== '' && Storage::disk($disk)->exists($path)) {
+            $content = Storage::disk($disk)->get($path);
+            $mimeType = 'application/octet-stream';
+            $fileName = $config->file_name ?: basename($path);
+
+            if (!empty($config->version)) {
+                $fileNameParts = pathinfo($fileName);
+                $fileName = $fileNameParts['filename'] . '-' . $config->version . '.' . ($fileNameParts['extension'] ?? 'txt');
+            }
+
+            return response($content)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         }
 
         // Prepare download content
@@ -375,13 +402,13 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'first_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
-            'dob' => 'nullable|date',
+            'dob' => 'required|date|before:today',
         ]);
 
         $updateData = [
             'first_name' => $validated['first_name'] ?? null,
             'last_name' => $validated['last_name'] ?? null,
-            'dob' => $validated['dob'] ?? null,
+            'dob' => $validated['dob'],
         ];
 
         /** @var User $user */
@@ -555,10 +582,165 @@ class DashboardController extends Controller
     }
 
     /**
+     * Save mandatory profile setup fields.
+     */
+    public function updateProfileSetup(Request $request)
+    {
+        $validated = $request->validate([
+            'dob' => 'required|date|before:today',
+            'pin' => 'required|digits:5|confirmed',
+        ]);
+
+        /** @var User $user */
+        $user = Auth::user();
+        $user->dob = $validated['dob'];
+        $user->pin = Hash::make($validated['pin']);
+        $user->save();
+
+        return redirect()->route('dashboard')->with('success', 'Profile setup completed successfully.');
+    }
+
+    /**
+     * Reset user PIN from settings.
+     */
+    public function resetPin(Request $request)
+    {
+        $validated = $request->validate([
+            'pin' => 'required|digits:5|confirmed',
+            'current_password' => 'nullable|string',
+        ]);
+
+        /** @var User $user */
+        $user = Auth::user();
+        $isSsoSession = (string) $request->session()->get('auth_method', 'password') === 'sso';
+
+        $userPasswordHash = $user->password_hash ?? $user->password;
+        $passwordVerified = false;
+        if (!empty($validated['current_password']) && !empty($userPasswordHash)) {
+            $passwordVerified = Hash::check($validated['current_password'], $userPasswordHash);
+        }
+
+        $verifiedAtTimestamp = (int) $request->session()->get('sso_pin_verified_at', 0);
+        $ssoVerifiedRecently = $verifiedAtTimestamp > 0
+            && Carbon::createFromTimestamp($verifiedAtTimestamp)->greaterThanOrEqualTo(now()->subMinutes(5));
+
+        if ($isSsoSession) {
+            if (!$passwordVerified && !$ssoVerifiedRecently) {
+                return redirect()->back()->withErrors([
+                    'current_password' => 'Please verify using your password or re-authenticate with SSO to reset PIN.',
+                ]);
+            }
+        } else {
+            if (!$passwordVerified) {
+                return redirect()->back()->withErrors([
+                    'current_password' => 'Current password is required to reset PIN.',
+                ]);
+            }
+        }
+
+        $user->pin = Hash::make($validated['pin']);
+        $user->save();
+        $request->session()->forget('sso_pin_verified_at');
+
+        return redirect()->back()->with('success', 'PIN reset successfully.');
+    }
+
+    /**
+     * Begin SSO PIN reset flow by storing pending PIN in session.
+     */
+    public function beginSsoPinReset(Request $request)
+    {
+        $validated = $request->validate([
+            'provider' => 'required|string',
+            'pin' => 'required|digits:5|confirmed',
+        ]);
+
+        $request->session()->put('pending_pin_reset_pin', $validated['pin']);
+
+        return redirect()->route('auth.sso.redirect', [
+            'provider' => strtolower(trim($validated['provider'])),
+            'intent' => 'pin_reset',
+        ]);
+    }
+
+    /**
      * Show the products view
      */
     public function products()
     {
         return view('products');
+    }
+
+    private function resolveDiskAndPathForRead(?string $storageDisk, string $storedLocation): array
+    {
+        $legacy = $this->resolveLegacyDiskAndPath($storageDisk, $storedLocation);
+        $path = ltrim((string) ($legacy[1] ?? ''), '/');
+        $activeDisk = $this->resolveActiveStorageDisk();
+
+        if ($path === '') {
+            return [$activeDisk, $path];
+        }
+
+        if (Storage::disk($activeDisk)->exists($path)) {
+            return [$activeDisk, $path];
+        }
+
+        return [$legacy[0], $path];
+    }
+
+    private function resolveActiveStorageDisk(): string
+    {
+        $s3Enabled = filter_var((string) env('S3_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+        if (!$s3Enabled) {
+            return 'local';
+        }
+
+        $key = trim((string) config('filesystems.disks.s3.key', env('AWS_ACCESS_KEY_ID', '')));
+        $secret = trim((string) config('filesystems.disks.s3.secret', $this->resolveAwsSecretFromEnv()));
+        $region = trim((string) config('filesystems.disks.s3.region', env('AWS_DEFAULT_REGION', '')));
+        $bucket = trim((string) config('filesystems.disks.s3.bucket', env('AWS_BUCKET', '')));
+
+        if ($key === '' || $secret === '' || $region === '' || $bucket === '') {
+            return 'local';
+        }
+
+        Config::set('filesystems.disks.s3.key', $key);
+        Config::set('filesystems.disks.s3.secret', $secret);
+        Config::set('filesystems.disks.s3.region', $region);
+        Config::set('filesystems.disks.s3.bucket', $bucket);
+
+        return 's3';
+    }
+
+    private function resolveAwsSecretFromEnv(): string
+    {
+        $raw = trim((string) env('AWS_SECRET_ACCESS_KEY', ''));
+        if ($raw === '') {
+            return '';
+        }
+
+        if (!str_starts_with($raw, 'ENC:')) {
+            return $raw;
+        }
+
+        try {
+            return trim(Crypt::decryptString(substr($raw, 4)));
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    private function resolveLegacyDiskAndPath(?string $storageDisk, string $storedLocation): array
+    {
+        $explicitDisk = strtolower(trim((string) $storageDisk));
+        if ($explicitDisk !== '') {
+            return [$explicitDisk, ltrim($storedLocation, '/')];
+        }
+
+        if (preg_match('/^([a-z0-9_-]+):\/\/(.+)$/i', $storedLocation, $matches)) {
+            return [strtolower($matches[1]), $matches[2]];
+        }
+
+        return ['local', ltrim($storedLocation, '/')];
     }
 }
