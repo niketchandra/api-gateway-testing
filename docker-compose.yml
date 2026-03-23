@@ -1,10 +1,8 @@
 services:
   mysql:
     image: mysql:8.0
-    environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_DATABASE: atglance
-      MYSQL_ROOT_HOST: "%"
+    env_file:
+      - ./.env.docker
     ports:
       - "3306:3306"
     volumes:
@@ -28,27 +26,21 @@ services:
 
   api:
     build: .
-    command: php artisan serve --host=0.0.0.0 --port=8000 --no-reload
-    environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-      APP_URL: http://localhost:8000
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_DATABASE: atglance
-      DB_USERNAME: root
-      DB_PASSWORD: ""
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      CACHE_DRIVER: redis
-      CACHE_STORE: redis
-      QUEUE_CONNECTION: redis
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -f /app/vendor/autoload.php ]; then
+          composer install --no-interaction --prefer-dist --optimize-autoloader;
+        fi
+        php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+    env_file:
+      - ./.env.docker
     ports:
       - "8000:8000"
     volumes:
       - ./composer:/app
+      - composer_vendor:/app/vendor
     depends_on:
       mysql:
         condition: service_healthy
@@ -58,22 +50,16 @@ services:
   queue-worker:
     build: .
     working_dir: /app
-    command: php artisan queue:work redis --tries=5 --backoff=30,60,120,300,600 --timeout=60 --sleep=3 --max-jobs=1000 --verbose
-    environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-      DB_CONNECTION: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_DATABASE: atglance
-      DB_USERNAME: root
-      DB_PASSWORD: ""
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      CACHE_DRIVER: redis
-      CACHE_STORE: redis
-      QUEUE_CONNECTION: redis
+    command:
+      - sh
+      - -lc
+      - |
+        if [ ! -f /app/vendor/autoload.php ]; then
+          composer install --no-interaction --prefer-dist --optimize-autoloader;
+        fi
+        php artisan queue:work redis --tries=5 --backoff=30,60,120,300,600 --timeout=60 --sleep=3 --max-jobs=1000 --verbose
+    env_file:
+      - ./.env.docker
     depends_on:
       mysql:
         condition: service_healthy
@@ -81,15 +67,13 @@ services:
         condition: service_healthy
     volumes:
       - ./composer:/app
+      - composer_vendor:/app/vendor
     restart: unless-stopped
 
   phpmyadmin:
     image: phpmyadmin:5.2
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: ""
+    env_file:
+      - ./.env.docker
     ports:
       - "8080:80"
     depends_on:
@@ -98,3 +82,4 @@ services:
 
 volumes:
   mysql_data:
+  composer_vendor:

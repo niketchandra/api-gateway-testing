@@ -24,12 +24,14 @@ RUN set -eux \
 
 COPY composer /app
 
-RUN set -eux \
-    ; curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    ; composer install --no-interaction --prefer-dist --optimize-autoloader \
-    ; if [ ! -f .env ]; then cp .env.example .env; fi \
-    ; if ! grep -q "^APP_KEY=base64:" .env; then php artisan key:generate --force; fi \
-    ; chmod -R 775 storage bootstrap/cache
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+RUN cp .env.example .env && \
+    sed -i "s/^APP_KEY=$/APP_KEY=base64:QQJDREVGQUJDREVGQUJDREVGQUJDREVGQUJDREVGQQ==/" .env
+
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader && \
+    php artisan key:generate --force && \
+    chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
 

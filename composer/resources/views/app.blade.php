@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'AtGlance - API Gateway')</title>
+    <title>@yield('title', 'AtGlance - Configuration Backup Service')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -486,11 +486,7 @@
         <!-- LEFT SIDEBAR (20%) -->
         <div class="sidebar">
             <div class="sidebar-logo">
-                @if(!empty($siteLogoUrl))
-                    <img src="{{ $siteLogoUrl }}" alt="AtGlance Logo" style="max-width: 140px; max-height: 48px; object-fit: contain;">
-                @else
-                    <i class="fas fa-gate"></i> AtGlance
-                @endif
+                <img src="{{ asset('storage/site-settings/AtGlance-Logo.png') }}" alt="AtGlance Logo" style="max-width: 140px; max-height: 48px; object-fit: contain;">
             </div>
 
             <div class="form-container" id="authForm">
@@ -701,11 +697,7 @@
                 <div class="header">
                     <div class="header-left">
                         <div class="header-logo">
-                            @if(!empty($siteLogoUrl))
-                                <img src="{{ $siteLogoUrl }}" alt="AtGlance Logo" style="max-width: 120px; max-height: 36px; object-fit: contain;">
-                            @else
-                                <i class="fas fa-gate"></i> AtGlance
-                            @endif
+                            <i class="fas fa-gate"></i> AtGlance
                         </div>
                     </div>
                     <div class="header-right">
@@ -727,7 +719,7 @@
                 <div class="header">
                     <div class="header-left">
                         <div class="header-logo">
-                            <i class="fas fa-gate"></i> AtGlance
+                            <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
                         </div>
                     </div>
                     <div class="header-nav">

@@ -1,0 +1,20 @@
+# Fresh Docker Build + Deploy (No Data, No Migration, No Seed)
+# Run these commands from the project root.
+
+# 1) Stop and remove existing containers, networks, and volumes (deletes DB data).
+docker compose -f docker-compose.yml -f docker-compose-kong.yml down --volumes --remove-orphans
+
+# 2) Rebuild all images from scratch without cache.
+docker compose -f docker-compose.yml -f docker-compose-kong.yml build --no-cache
+
+# 3) Start the full stack in detached mode.
+docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d --force-recreate --remove-orphans
+
+# Note:
+# - This flow intentionally does NOT run Laravel migration or seeding commands.
+# - Database starts empty because volumes are removed in step 1.
+
+rm .\composer\storage\app\installer\installed.json
+docker compose -f docker-compose.yml -f docker-compose-kong.yml down --volumes --remove-orphans
+docker compose -f docker-compose.yml -f docker-compose-kong.yml build --no-cache
+docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d --force-recreate --remove-orphans

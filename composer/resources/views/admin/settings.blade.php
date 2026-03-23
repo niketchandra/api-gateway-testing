@@ -64,6 +64,7 @@
         <form method="POST" action="{{ route('admin.settings.site', ['tab' => 'site']) }}" enctype="multipart/form-data">
             @csrf
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:12px;">
+                {{--
                 <div>
                     <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Logo Image Upload</label>
                     <input type="file" name="site_logo" accept=".jpg,.jpeg,.png,.webp,.svg" style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px; background:white;">
@@ -77,6 +78,7 @@
                     <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Logo URL (optional override)</label>
                     <input type="url" name="site_logo_url" value="{{ old('site_logo_url', $siteLogoUrlOverride ?? '') }}" placeholder="https://example.com/logo.png" style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
                 </div>
+                --}}
             </div>
 
             <div style="margin-bottom:12px;">

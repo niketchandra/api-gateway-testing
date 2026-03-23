@@ -6,3 +6,4 @@ composer/public/storage
 # composer/storage/framework/sessions/*
 # composer/storage/framework/views/*
 # composer/.env
+composer/storage/app/installer/installed.json
