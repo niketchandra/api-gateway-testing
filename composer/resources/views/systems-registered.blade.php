@@ -12,7 +12,7 @@
     <!-- Search/Filter Section -->
     <div style="background: white; padding: 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
-            <i class="fas fa-filter" style="color: #667eea; font-size: 18px;"></i>
+            <i class="fas fa-filter" style="color: #111111; font-size: 18px;"></i>
             <h3 style="font-size: 16px; font-weight: bold; color: #333; margin: 0;">Search & Filter</h3>
         </div>
         <form method="GET" action="{{ route('systems-registered') }}" id="filterForm">
@@ -47,10 +47,10 @@
                 </div>
             </div>
             <div style="display: flex; gap: 12px;">
-                <button type="submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                <button type="submit" style="background: #000000; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, background 0.2s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.background='#555555'" onmouseout="this.style.transform='scale(1)'; this.style.background='#000000'">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <a href="{{ route('systems-registered') }}" style="background: #f5f5f5; color: #666; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s ease;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f5f5f5'">
+                <a href="{{ route('systems-registered') }}" style="background: #d1d1d1; color: #333333; border: 1px solid #a8a8a8; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s ease;" onmouseover="this.style.background='#b6b6b6'" onmouseout="this.style.background='#d1d1d1'">
                     <i class="fas fa-redo"></i> Clear Filters
                 </a>
             </div>
@@ -167,7 +167,7 @@
                                 </a>
                                 <div id="hash-content-{{ $item->id }}" style="display: none; margin-top: 8px; background: white; padding: 10px; border-radius: 6px; border: 1px solid #ffe0b2; font-family: 'Courier New', monospace; font-size: 12px; color: #333; word-break: break-all; line-height: 1.6; position: relative; padding-right: 70px;">
                                     <span id="hash-value-{{ $item->id }}">{{ $item->validation_hash }}</span>
-                                    <button onclick="copyHashById('hash-value-{{ $item->id }}', this)" style="position: absolute; top: 8px; right: 8px; background: #ff9800; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#f57c00'" onmouseout="this.style.background='#ff9800'">
+                                    <button onclick="copyHashById('hash-value-{{ $item->id }}', this)" style="position: absolute; top: 8px; right: 8px; background: #000000; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#555555'" onmouseout="this.style.background='#000000'">
                                         <i class="fas fa-copy"></i> Copy
                                     </button>
                                 </div>
@@ -187,9 +187,9 @@
                         <!-- Action Button -->
                         <div>
                             <button onclick="window.location.href='{{ route('systems-registered.services', ['systemId' => $item->id]) }}'" 
-                                    style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;"
-                                    onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)';" 
-                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                                    style="width: 100%; background: #000000; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;"
+                                    onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.25)'; this.style.background='#555555';" 
+                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.background='#000000';">
                                 <i class="fas fa-cubes"></i> View Services
                             </button>
                         </div>

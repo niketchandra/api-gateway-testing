@@ -23,7 +23,7 @@
     </div>
 
     <!-- Settings Tabs -->
-    <div style="display: flex; gap: 10px; border-bottom: 2px solid #e0e0e0; margin-bottom: 30px;">
+    <div style="display: flex; gap: 10px; border-bottom: 2px solid #b3b3b3; margin-bottom: 30px;">
         <button class="settings-tab active" onclick="switchSettingsTab('account', this)">
             <i class="fas fa-user-cog"></i> Account
         </button>
@@ -49,15 +49,15 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            color: #999;
+            color: #666;
             border-bottom: 3px solid transparent;
             margin-bottom: -2px;
             transition: all 0.3s ease;
         }
 
         .settings-tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: #555555;
+            border-bottom-color: #8f8f8f;
         }
 
         .settings-content {
@@ -84,7 +84,8 @@
             background: white;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #b3b3b3;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
             margin-bottom: 20px;
         }
 
@@ -103,7 +104,7 @@
         .settings-form-group select {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid #b3b3b3;
             border-radius: 6px;
             font-size: 14px;
         }
@@ -111,8 +112,8 @@
         .settings-form-group input:focus,
         .settings-form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #000000;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
         }
 
         .toggle-switch {
@@ -120,7 +121,8 @@
             align-items: center;
             gap: 15px;
             padding: 20px;
-            background: #f8f9fa;
+            background: #f3f3f3;
+            border: 1px solid #b3b3b3;
             border-radius: 6px;
             margin-bottom: 15px;
         }
@@ -129,14 +131,14 @@
             position: relative;
             width: 50px;
             height: 30px;
-            background: #ccc;
+            background: #b3b3b3;
             border-radius: 15px;
             cursor: pointer;
             transition: background 0.3s ease;
         }
 
         .toggle.active {
-            background: #667eea;
+            background: #000000;
         }
 
         .toggle::after {
@@ -156,25 +158,26 @@
         }
 
         .btn-save {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             color: white;
             padding: 12px 30px;
             border: none;
             border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
         }
 
         .btn-save:hover {
             transform: translateY(-2px);
+            background: #2f2f2f;
         }
 
         .btn-secondary {
-            background: #f0f0f0;
+            background: #d1d1d1;
             color: #333;
             padding: 12px 30px;
-            border: none;
+            border: 1px solid #a8a8a8;
             border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
@@ -183,13 +186,14 @@
         }
 
         .btn-secondary:hover {
-            background: #e0e0e0;
+            background: #b6b6b6;
         }
 
         .api-key-item {
-            background: #f8f9fa;
+            background: #f5f5f5;
             padding: 15px;
             border-radius: 6px;
+            border: 1px solid #b3b3b3;
             margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
@@ -203,6 +207,7 @@
             background: white;
             padding: 10px;
             border-radius: 4px;
+            border: 1px solid #b3b3b3;
         }
 
         .status-badge {
@@ -213,13 +218,13 @@
         }
 
         .status-active {
-            background: #d4edda;
-            color: #155724;
+            background: #e7e7e7;
+            color: #2a2a2a;
         }
 
         .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
+            background: #d4d4d4;
+            color: #1f1f1f;
         }
 
         .pin-row {
@@ -243,8 +248,8 @@
 
         .pin-box:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+            border-color: #000000;
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.08);
             transform: translateY(-1px);
         }
 
@@ -442,14 +447,14 @@
         <div class="settings-card">
             <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 25px;"><i class="fas fa-credit-card"></i> Billing & Subscription</h2>
 
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
+            <div style="background: #000000; color: white; padding: 25px; border-radius: 8px; margin-bottom: 25px;">
                 <h3 style="font-size: 16px; margin-bottom: 10px;">Current Plan</h3>
                 <p style="font-size: 28px; font-weight: bold; margin-bottom: 10px;">Professional</p>
                 <p style="opacity: 0.9;">$49/month • Renewal on March 15, 2026</p>
             </div>
 
             <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">Payment Method</h3>
-            <div style="background: white; padding: 15px; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 20px;">
+            <div style="background: white; padding: 15px; border: 1px solid #b3b3b3; border-radius: 6px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <strong><i class="fas fa-credit-card"></i> Visa ending in 4242</strong>
@@ -474,13 +479,13 @@
                         <td style="padding: 12px;">February 15, 2026</td>
                         <td style="padding: 12px;">$49.00</td>
                         <td style="padding: 12px;"><span class="status-badge status-active">Paid</span></td>
-                        <td style="padding: 12px;"><a href="#" style="color: #667eea;">Download</a></td>
+                        <td style="padding: 12px;"><a href="#" style="color: #000000;">Download</a></td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e0e0e0;">
                         <td style="padding: 12px;">January 15, 2026</td>
                         <td style="padding: 12px;">$49.00</td>
                         <td style="padding: 12px;"><span class="status-badge status-active">Paid</span></td>
-                        <td style="padding: 12px;"><a href="#" style="color: #667eea;">Download</a></td>
+                        <td style="padding: 12px;"><a href="#" style="color: #000000;">Download</a></td>
                     </tr>
                 </tbody>
             </table>
@@ -507,7 +512,7 @@
                                     {{ ucfirst($apiKey->status) }}
                                 </span>
                             </div>
-                            <div id="token-display-{{ $apiKey->id }}" class="api-key-display">{{ substr($apiKey->token, 0, 16) }}...</div>
+                            <div id="token-display-{{ $apiKey->id }}" class="api-key-display" style="max-width: 50%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">{{ substr($apiKey->token, 0, 16) }}...</div>
                             <div style="display: flex; gap: 10px; margin-top: 8px; font-size: 12px; color: #666;">
                                 <span><i class="fas fa-calendar"></i> Created {{ $apiKey->created_at?->format('F j, Y') }}</span>
                                 @if($apiKey->expires_at)
@@ -648,7 +653,7 @@
     </div>
 
     <!-- NEW TOKEN DISPLAY ALERT -->
-    <div id="newTokenAlert" style="display: none; position: fixed; top: 20px; right: 20px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1002; max-width: 400px;">
+    <div id="newTokenAlert" style="display: none; position: fixed; top: 20px; right: 20px; background: #e6e6e6; color: #222222; border: 1px solid #b3b3b3; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1002; max-width: 400px;">
         <div style="display: flex; justify-content: space-between; align-items: start; gap: 15px;">
             <div>
                 <h4 style="margin: 0 0 10px 0;"><i class="fas fa-check-circle"></i> API Key Created!</h4>
@@ -656,7 +661,7 @@
                 <div class="api-key-display" id="newTokenValue" style="margin-bottom: 10px;"></div>
                 <button type="button" onclick="copyToClipboard(document.getElementById('newTokenValue').textContent)" class="btn-save" style="padding: 8px 16px; font-size: 13px;"><i class="fas fa-copy"></i> Copy</button>
             </div>
-            <button type="button" onclick="closeNewTokenAlert()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #155724; padding: 0;">&times;</button>
+            <button type="button" onclick="closeNewTokenAlert()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #222222; padding: 0;">&times;</button>
         </div>
     </div>
 
@@ -792,7 +797,7 @@
                                 <strong>${data.name}</strong>
                                 <span class="status-badge status-active">Active</span>
                             </div>
-                            <div id="token-display-${data.key_id}" class="api-key-display">${data.token}</div>
+                            <div id="token-display-${data.key_id}" class="api-key-display" style="max-width: 50%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${data.token}</div>
                             <div style="display: flex; gap: 10px; margin-top: 8px; font-size: 12px; color: #666;">
                                 <span><i class="fas fa-calendar"></i> Created Today</span>
                                 ${data.expires_at ? `<span><i class="fas fa-hourglass-end"></i> Expires ${data.expires_at}</span>` : '<span><i class="fas fa-infinity"></i> No expiry</span>'}

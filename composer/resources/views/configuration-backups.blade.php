@@ -9,20 +9,20 @@
         <p style="color: #666; font-size: 14px;">Manage and download your configuration backup files</p>
     </div>
 
-    <div style="background: white; padding: 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
+    <div style="background: white; padding: 24px; border-radius: 14px; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
-            <i class="fas fa-filter" style="color: #667eea; font-size: 18px;"></i>
+            <i class="fas fa-filter" style="color: #333333; font-size: 18px;"></i>
             <h3 style="font-size: 16px; font-weight: bold; color: #333; margin: 0;">Search & Filter</h3>
         </div>
         <form method="GET" action="{{ route('configuration-backups') }}">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
                 <div>
                     <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">Service Name</label>
-                    <input type="text" name="service_name" value="{{ request('service_name') }}" placeholder="Search by service" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e0'">
+                    <input type="text" name="service_name" value="{{ request('service_name') }}" placeholder="Search by service" style="width: 100%; padding: 10px 12px; border: 1px solid #b3b3b3; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#000000'" onblur="this.style.borderColor='#b3b3b3'">
                 </div>
                 <div>
                     <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">Status</label>
-                    <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; background: white; cursor: pointer;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e0'">
+                    <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid #b3b3b3; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; background: white; cursor: pointer;" onfocus="this.style.borderColor='#000000'" onblur="this.style.borderColor='#b3b3b3'">
                         <option value="">All Status</option>
                         <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
                         <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
@@ -30,22 +30,22 @@
                 </div>
                 <div>
                     <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">Date</label>
-                    <input type="date" name="date" value="{{ request('date') }}" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e0'">
+                    <input type="date" name="date" value="{{ request('date') }}" style="width: 100%; padding: 10px 12px; border: 1px solid #b3b3b3; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#000000'" onblur="this.style.borderColor='#b3b3b3'">
                 </div>
                 <div>
                     <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">System ID</label>
-                    <input type="text" name="system_id" value="{{ request('system_id') }}" placeholder="Search by system id" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e0'">
+                    <input type="text" name="system_id" value="{{ request('system_id') }}" placeholder="Search by system id" style="width: 100%; padding: 10px 12px; border: 1px solid #b3b3b3; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#000000'" onblur="this.style.borderColor='#b3b3b3'">
                 </div>
                 <div>
                     <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">Hash</label>
-                    <input type="text" name="hash" value="{{ request('hash') }}" placeholder="Search by hash" style="width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e0e0e0'">
+                    <input type="text" name="hash" value="{{ request('hash') }}" placeholder="Search by hash" style="width: 100%; padding: 10px 12px; border: 1px solid #b3b3b3; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#000000'" onblur="this.style.borderColor='#b3b3b3'">
                 </div>
             </div>
             <div style="display: flex; gap: 12px;">
-                <button type="submit" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                <button type="submit" style="background: #000000; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <a href="{{ route('configuration-backups') }}" style="background: #f5f5f5; color: #666; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s ease;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f5f5f5'">
+                <a href="{{ route('configuration-backups') }}" style="background: #d1d1d1; color: #333333; border: 1px solid #a8a8a8; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s ease;" onmouseover="this.style.background='#b6b6b6'" onmouseout="this.style.background='#d1d1d1'">
                     <i class="fas fa-redo"></i> Clear Filters
                 </a>
             </div>

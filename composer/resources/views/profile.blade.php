@@ -27,8 +27,8 @@
 
         .pin-box:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.12);
+            border-color: #000000;
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.08);
             transform: translateY(-1px);
         }
 
@@ -53,7 +53,7 @@
     @endif
 
     @if($requiresProfileSetup)
-        <div class="profile-section" style="margin-bottom: 24px; border: 1px solid rgba(102, 126, 234, 0.2);">
+        <div class="profile-section" style="margin-bottom: 24px; border: none;">
             <h2><i class="fas fa-user-shield"></i> Complete Profile Setup</h2>
             <p style="margin-bottom: 20px; color: #666;">Set your Date of Birth and a 5-digit PIN to continue to dashboard and all other pages.</p>
 
@@ -68,7 +68,7 @@
                             name="dob"
                             value="{{ old('dob', auth()->user()->dob ? auth()->user()->dob->format('Y-m-d') : '') }}"
                             required
-                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;"
+                            style="width: 100%; padding: 12px; border: 1px solid #b3b3b3; border-radius: 6px;"
                         >
                     </div>
 
@@ -87,7 +87,7 @@
                     </div>
                 </div>
 
-                <button type="submit" style="margin-top: 20px; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                <button type="submit" style="margin-top: 20px; padding: 12px 24px; background: #000000; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
                     <i class="fas fa-save"></i> Save PIN & DOB
                 </button>
             </form>
@@ -95,13 +95,13 @@
     @else
 
     <!-- Banner Background -->
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 200px; border-radius: 10px; margin-bottom: 50px; position: relative;"></div>
+    <div style="background: #111111; height: 200px; margin-bottom: 50px; border-radius: 10px; position: relative;"></div>
 
     <!-- Profile Header -->
     <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 30px; align-items: start; margin-bottom: 40px;">
         <!-- Profile Picture and Name -->
-        <div style="text-align: center; margin-top: -100px;">
-            <div style="width: 150px; height: 150px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; border: 5px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 60px; color: white; margin: 0 auto;">
+        <div style="text-align: center; margin-top: -10px;">
+            <div style="width: 150px; height: 150px; background: #000000; border-radius: 50%; border: 5px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; font-size: 60px; color: white; margin: 0 auto;">
                 <i class="fas fa-user"></i>
             </div>
         </div>
@@ -121,17 +121,17 @@
                 </div>
                 <div>
                     <p style="color: #999; font-size: 12px; margin-bottom: 5px;">Status</p>
-                    <p style="font-weight: 600; color: #4caf50;"><i class="fas fa-check-circle"></i> Active</p>
+                    <p style="font-weight: 600; color: #2f2f2f;"><i class="fas fa-check-circle"></i> Active</p>
                 </div>
             </div>
         </div>
 
         <!-- Action Buttons -->
         <div style="display: flex; flex-direction: column; gap: 10px;">
-            <a href="{{ route('settings') }}" class="profile-btn" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <a href="{{ route('settings') }}" class="profile-btn" style="padding: 12px 24px; background: #000000; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <i class="fas fa-edit"></i> Edit Profile
             </a>
-            <button type="button" onclick="submitLogoutForm()" class="profile-btn" style="padding: 12px 24px; background: #f0f0f0; color: #333; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f0f0f0'">
+            <button type="button" onclick="submitLogoutForm()" class="profile-btn" style="padding: 12px 24px; background: #d1d1d1; color: #333; border: 1px solid #a8a8a8; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.3s ease;" onmouseover="this.style.background='#b6b6b6'" onmouseout="this.style.background='#d1d1d1'">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
         </div>
@@ -142,7 +142,8 @@
             background: white;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #b3b3b3;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
             margin-bottom: 20px;
         }
 
@@ -164,19 +165,16 @@
 
         .stat-card {
             padding: 20px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            background: #f3f3f3;
             border-radius: 8px;
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            border: 1px solid #b3b3b3;
             text-align: center;
         }
 
         .stat-card .number {
             font-size: 32px;
             font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #111111;
             margin-bottom: 5px;
         }
 
@@ -188,10 +186,11 @@
 
         .activity-item {
             padding: 15px;
-            border-left: 3px solid #667eea;
-            background: #f8f9fa;
+            border-left: 3px solid #666666;
+            background: #f3f3f3;
             margin-bottom: 10px;
             border-radius: 4px;
+            border: 1px solid #b3b3b3;
         }
 
         .activity-item .time {
@@ -241,7 +240,7 @@
             </div>
             <div>
                 <p style="color: #999; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Account Status</p>
-                <p style="font-size: 16px; color: #4caf50; font-weight: 500;"><i class="fas fa-check-circle"></i> Active & Verified</p>
+                <p style="font-size: 16px; color: #2f2f2f; font-weight: 500;"><i class="fas fa-check-circle"></i> Active & Verified</p>
             </div>
             <div>
                 <p style="color: #999; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Joined</p>
@@ -258,7 +257,7 @@
         </div>
 
         <div style="margin-top: 20px; text-align: right;">
-            <a href="{{ route('settings') }}" class="profile-btn" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; inline-block;">
+            <a href="{{ route('settings') }}" class="profile-btn" style="padding: 10px 20px; background: #000000; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
                 <i class="fas fa-edit"></i> Update Information
             </a>
         </div>
@@ -299,28 +298,28 @@
         <h2><i class="fas fa-shield-alt"></i> Security & Privacy</h2>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <div style="padding: 20px; background: #f3f3f3; border: 1px solid #b3b3b3; border-radius: 8px;">
                 <h3 style="font-weight: 600; color: #333; margin-bottom: 10px;"><i class="fas fa-lock"></i> Password</h3>
                 <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Last changed March 25, 2026</p>
-                <a href="{{ route('settings') }}" style="color: #667eea; text-decoration: none; font-weight: 600;">Change Password</a>
+                <a href="{{ route('settings') }}" style="color: #111111; text-decoration: none; font-weight: 600;">Change Password</a>
             </div>
 
-            <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <div style="padding: 20px; background: #f3f3f3; border: 1px solid #b3b3b3; border-radius: 8px;">
                 <h3 style="font-weight: 600; color: #333; margin-bottom: 10px;"><i class="fas fa-shield-alt"></i> Two-Factor Auth</h3>
                 <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Not enabled</p>
-                <a href="{{ route('settings') }}" style="color: #667eea; text-decoration: none; font-weight: 600;">Enable 2FA</a>
+                <a href="{{ route('settings') }}" style="color: #111111; text-decoration: none; font-weight: 600;">Enable 2FA</a>
             </div>
 
-            <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <div style="padding: 20px; background: #f3f3f3; border: 1px solid #b3b3b3; border-radius: 8px;">
                 <h3 style="font-weight: 600; color: #333; margin-bottom: 10px;"><i class="fas fa-key"></i> API Keys</h3>
                 <p style="color: #666; font-size: 13px; margin-bottom: 15px;">2 active keys</p>
-                <a href="{{ route('settings') }}" style="color: #667eea; text-decoration: none; font-weight: 600;">Manage Keys</a>
+                <a href="{{ route('settings') }}" style="color: #111111; text-decoration: none; font-weight: 600;">Manage Keys</a>
             </div>
 
-            <div style="padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <div style="padding: 20px; background: #f3f3f3; border: 1px solid #b3b3b3; border-radius: 8px;">
                 <h3 style="font-weight: 600; color: #333; margin-bottom: 10px;"><i class="fas fa-laptop"></i> Sessions</h3>
                 <p style="color: #666; font-size: 13px; margin-bottom: 15px;">1 active session</p>
-                <a href="{{ route('settings') }}" style="color: #667eea; text-decoration: none; font-weight: 600;">View Sessions</a>
+                <a href="{{ route('settings') }}" style="color: #111111; text-decoration: none; font-weight: 600;">View Sessions</a>
             </div>
         </div>
     </div>
@@ -345,7 +344,7 @@
         </div>
 
         <div style="margin-top: 20px; text-align: right;">
-            <a href="{{ route('settings') }}" class="profile-btn" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 600; inline-block;">
+            <a href="{{ route('settings') }}" class="profile-btn" style="padding: 10px 20px; background: #000000; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
                 <i class="fas fa-sliders-h"></i> Change Preferences
             </a>
         </div>
@@ -363,7 +362,7 @@
 
             for (let i = 0; i < 5; i++) {
                 const input = document.createElement('input');
-                input.type = 'text';
+                input.type = 'password';
                 input.inputMode = 'numeric';
                 input.maxLength = 1;
                 input.className = 'pin-box';

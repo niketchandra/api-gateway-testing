@@ -6,9 +6,12 @@ services:
       KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
       KONG_PROXY_LISTEN: 0.0.0.0:8002
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      # KONG_ADMIN_GUI_URL: http://localhost:8002
+      # KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8445
     ports:
       - "8002:8002"
       - "8001:8001"
+      # - "8445:8445"
     volumes:
       - ./kong:/kong/declarative
     depends_on:

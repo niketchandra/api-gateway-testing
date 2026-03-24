@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'AtGlance - Configuration Backup Service')</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('storage/site-settings/AtGlance-Logo.png') }}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -21,7 +23,7 @@
         .main-container {
             display: flex;
             height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f5;
         }
 
         .sidebar {
@@ -31,21 +33,25 @@
             flex-direction: column;
             justify-content: flex-start;
             overflow-y: auto;
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            background: #ffffff;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
+            border-right: 1px solid #b3b3b3;
         }
 
         .content {
             width: 80%;
             padding: 0;
             overflow-y: auto;
-            background: white;
+            background: #ffffff;
         }
 
         .sidebar-logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
             font-size: 24px;
             font-weight: bold;
-            color: #667eea;
+            color: #1a1a1a;
             margin-bottom: 40px;
             text-align: center;
         }
@@ -64,7 +70,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid #b3b3b3;
         }
 
         .tab-btn {
@@ -74,15 +80,15 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            color: #999;
+            color: #999999;
             border-bottom: 3px solid transparent;
             transition: all 0.3s ease;
             margin-bottom: -2px;
         }
 
         .tab-btn.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: #000000;
+            border-bottom-color: #000000;
         }
 
         .tab-content {
@@ -120,7 +126,7 @@
         .form-group input,
         .form-group select {
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid #b3b3b3;
             border-radius: 6px;
             font-size: 14px;
             transition: border-color 0.3s ease;
@@ -130,8 +136,8 @@
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #000000;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
         }
 
         .btn {
@@ -147,24 +153,54 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             color: white;
-            width: 100%;
         }
 
         .btn-primary:hover {
+            background: #333333;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-            width: 100%;
+            background: #d1d1d1;
+            color: #333333;
+            border: 1px solid #a8a8a8;
         }
 
         .btn-secondary:hover {
-            background: #e0e0e0;
+            background: #999999;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #333333;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #1a1a1a;
+            transform: translateY(-2px);
+        }
+
+        /* Global button hover color across app pages */
+        button:hover,
+        .btn:hover,
+        .btn-primary:hover,
+        .btn-secondary:hover,
+        .btn-danger:hover,
+        .btn-save:hover,
+        .action-btn:hover,
+        .filter-btn:hover,
+        .settings-tab-btn:hover,
+        .profile-btn:hover,
+        .admin-action-btn:hover,
+        a[style*='cursor: pointer']:hover {
+            background: #555555 !important;
+            border-color: #555555 !important;
+            color: #ffffff !important;
         }
 
         .sso-grid {
@@ -188,7 +224,7 @@
             text-align: center;
             margin: 20px 0;
             position: relative;
-            color: #999;
+            color: #7a7a7a;
             font-size: 13px;
         }
 
@@ -199,7 +235,7 @@
             top: 50%;
             width: 40%;
             height: 1px;
-            background: #ddd;
+            background: #bdbdbd;
         }
 
         .divider::before {
@@ -219,18 +255,18 @@
         }
 
         .remember-forgot a {
-            color: #667eea;
+            color: #000000;
             text-decoration: none;
             transition: color 0.3s ease;
         }
 
         .remember-forgot a:hover {
-            color: #764ba2;
+            color: #333333;
         }
 
         .header {
             background: white;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #b3b3b3;
             padding: 20px 40px;
             display: flex;
             justify-content: space-between;
@@ -246,18 +282,12 @@
         .header-logo {
             font-size: 24px;
             font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #000000;
         }
 
         .header-logo i {
             margin-right: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #000000;
         }
 
         .header-nav {
@@ -275,7 +305,8 @@
         }
 
         .header-nav a:hover {
-            color: #667eea;
+            color: #000000;
+            font-weight: 600;
         }
 
         .header-right {
@@ -287,7 +318,7 @@
         .welcome-section {
             padding: 60px 40px;
             text-align: center;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            background: #ffffff;
         }
 
         .welcome-title {
@@ -295,10 +326,7 @@
             font-weight: bold;
             color: #333;
             margin-bottom: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #000000;
         }
 
         .welcome-subtitle {
@@ -310,6 +338,7 @@
 
         .features-section {
             padding: 60px 40px;
+            background: #f7f7f7;
         }
 
         .section-title {
@@ -329,21 +358,21 @@
 
         .feature-card {
             padding: 30px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            background: #ffffff;
             border-radius: 10px;
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            border: 1px solid #b3b3b3;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             text-align: center;
         }
 
         .feature-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
         }
 
         .feature-icon {
             font-size: 40px;
-            color: #667eea;
+            color: #333333;
             margin-bottom: 15px;
         }
 
@@ -362,18 +391,18 @@
 
         .screenshots-section {
             padding: 60px 40px;
-            background: #f8f9fa;
+            background: #f1f1f1;
         }
 
         .screenshot-placeholder {
             width: 100%;
             height: 300px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #d0d0d0;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: #333333;
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 20px;
@@ -394,7 +423,7 @@
 
         .contact-form textarea {
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid #b3b3b3;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
@@ -404,8 +433,8 @@
 
         .contact-form textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #000000;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
         }
 
         .alert {
@@ -419,15 +448,15 @@
         }
 
         .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #f0f0f0;
+            color: #333333;
+            border: 1px solid #b3b3b3;
         }
 
         .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #e8e8e8;
+            color: #1a1a1a;
+            border: 1px solid #b3b3b3;
         }
 
         .alert i {
@@ -446,7 +475,7 @@
             .sidebar {
                 width: 100%;
                 height: auto;
-                border-bottom: 1px solid #e0e0e0;
+                border-bottom: 1px solid #b3b3b3;
                 padding: 20px;
             }
 
@@ -466,7 +495,7 @@
         }
 
         .logout-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             color: white;
             padding: 10px 20px;
             border-radius: 6px;
@@ -477,7 +506,7 @@
 
         .logout-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
         }
     </style>
 </head>
@@ -697,7 +726,7 @@
                 <div class="header">
                     <div class="header-left">
                         <div class="header-logo">
-                            <i class="fas fa-gate"></i> AtGlance
+                            <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
                         </div>
                     </div>
                     <div class="header-right">
@@ -834,8 +863,8 @@
                 </div>
 
                 <!-- FOOTER -->
-                <footer style="padding: 40px; background: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: center; color: #666; font-size: 14px;">
-                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="#" style="color: #667eea;">Privacy Policy</a> | <a href="#" style="color: #667eea;">Terms of Service</a></p>
+                <footer style="padding: 40px; background: #f3f3f3; border-top: 1px solid #b3b3b3; text-align: center; color: #444; font-size: 14px;">
+                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="#" style="color: #000000;">Privacy Policy</a> | <a href="#" style="color: #000000;">Terms of Service</a></p>
                 </footer>
             @endif
         </div>

@@ -1,8 +1,8 @@
 services:
   mysql:
     image: mysql:8.0
-    env_file:
-      - ./.env.docker
+    # env_file:
+    #   - ./.env.docker
     ports:
       - "3306:3306"
     volumes:
@@ -13,6 +13,10 @@ services:
       timeout: 5s
       retries: 12
       start_period: 120s
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: yes
+      MYSQL_DATABASE: atglance
+      MYSQL_ROOT_HOST: '%'
 
   redis:
     image: redis:7-alpine
@@ -26,6 +30,7 @@ services:
 
   api:
     build: .
+    image: niketchandra/atglance-api:1.4
     command:
       - sh
       - -lc
@@ -34,8 +39,8 @@ services:
           composer install --no-interaction --prefer-dist --optimize-autoloader;
         fi
         php artisan serve --host=0.0.0.0 --port=8000 --no-reload
-    env_file:
-      - ./.env.docker
+    # env_file:
+    #   - ./.env.docker
     ports:
       - "8000:8000"
     volumes:
@@ -49,6 +54,7 @@ services:
 
   queue-worker:
     build: .
+    image: niketchandra/atglance-queue-worker:1.4
     working_dir: /app
     command:
       - sh
@@ -58,8 +64,8 @@ services:
           composer install --no-interaction --prefer-dist --optimize-autoloader;
         fi
         php artisan queue:work redis --tries=5 --backoff=30,60,120,300,600 --timeout=60 --sleep=3 --max-jobs=1000 --verbose
-    env_file:
-      - ./.env.docker
+    # env_file:
+    #   - ./.env.docker
     depends_on:
       mysql:
         condition: service_healthy
@@ -72,13 +78,18 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:5.2
-    env_file:
-      - ./.env.docker
+    # env_file:
+    #   - ./.env.docker
     ports:
       - "8080:80"
     depends_on:
       mysql:
         condition: service_healthy
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ''
 
 volumes:
   mysql_data:

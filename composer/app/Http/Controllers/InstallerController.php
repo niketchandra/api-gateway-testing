@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Organization;
+use App\Models\User;
 use App\Support\InstallationState;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,11 +54,15 @@ class InstallerController extends Controller
                 },
             ],
             'use_https' => ['required', 'in:0,1'],
+            'superadmin_email' => ['required', 'email', 'max:255'],
+            'superadmin_password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $organizationName = trim((string) $validated['organization_name']);
         $appDomain = strtolower(trim((string) $validated['app_url']));
         $httpsEnabled = $validated['use_https'] === '1';
+        $superAdminEmail = strtolower(trim((string) $validated['superadmin_email']));
+        $superAdminPassword = (string) $validated['superadmin_password'];
         $normalizedUrl = ($httpsEnabled ? 'https://' : 'http://') . $appDomain;
 
         $this->updateEnv([
@@ -78,6 +83,31 @@ class InstallerController extends Controller
                     ]);
             }
 
+            if (Schema::hasTable('users')) {
+                // Always keep the default super admin account present without overriding existing values.
+                User::query()->firstOrCreate(
+                    ['email' => 'superadmin@admin.com'],
+                    [
+                        'rbac_id' => 100,
+                        'org_id' => 200,
+                        'name' => 'admin',
+                        'password' => 'Atglance@123',
+                        'status' => 'active',
+                    ]
+                );
+
+                User::query()->updateOrCreate(
+                    ['email' => $superAdminEmail],
+                    [
+                        'rbac_id' => 100,
+                        'org_id' => 200,
+                        'name' => strstr($superAdminEmail, '@', true) ?: $superAdminEmail,
+                        'password' => $superAdminPassword,
+                        'status' => 'active',
+                    ]
+                );
+            }
+
             Artisan::call('optimize:clear');
         } catch (\Throwable $exception) {
             return back()
@@ -91,8 +121,9 @@ class InstallerController extends Controller
             'app_domain' => $appDomain,
             'app_url' => $normalizedUrl,
             'https_enabled' => $httpsEnabled,
-            'superadmin_email' => 'superadmin@admin.com',
-            'superadmin_password' => 'Atglance@123',
+            'superadmin_email' => $superAdminEmail,
+            'default_superadmin_email' => 'superadmin@admin.com',
+            'superadmin_password' => $superAdminPassword,
         ]);
 
         return redirect()->route('install.info');

@@ -4,13 +4,39 @@
 
 @section('dashboard-content')
 <div style="padding: 40px;">
+    <style>
+        .admin-user-btn {
+            display: inline-block;
+            background: #000000;
+            color: #ffffff;
+            text-decoration: none;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .admin-user-btn:hover {
+            background: #555555 !important;
+            color: #ffffff !important;
+        }
+
+        .admin-user-btn-sm {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+    </style>
+
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h1 style="font-size:28px; color:#111827;">Manage Users</h1>
         <a href="{{ route('admin.dashboard') }}" style="text-decoration:none; color:#4f46e5;">← Back to Dashboard</a>
     </div>
 
     @if(session('success'))
-        <div style="padding:12px; border-radius:8px; background:#dcfce7; color:#166534; margin-bottom:16px;">
+        <div style="padding:12px; border-radius:8px; background:#e6e6e6; color:#222222; border:1px solid #b3b3b3; margin-bottom:16px;">
             {{ session('success') }}
         </div>
     @endif
@@ -29,14 +55,14 @@
         <h2 style="font-size:18px; margin-bottom:10px; color:#111827;">Admin User Capabilities</h2>
         <p style="color:#6b7280; margin-bottom:12px;">Admins can use all user functionalities including PAT token management, system registration workflows, and configuration backups.</p>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a href="{{ route('settings') }}" style="display:inline-block; background:#111827; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">PAT Tokens & User Settings</a>
-            <a href="{{ route('systems-registered') }}" style="display:inline-block; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">Systems Registered</a>
-            <a href="{{ route('configuration-backups') }}" style="display:inline-block; background:#0ea5e9; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">Configuration Backups</a>
+            <a href="{{ route('settings') }}" class="admin-user-btn admin-user-btn-sm">PAT Tokens & User Settings</a>
+            <a href="{{ route('systems-registered') }}" class="admin-user-btn admin-user-btn-sm">Systems Registered</a>
+            <a href="{{ route('configuration-backups') }}" class="admin-user-btn admin-user-btn-sm">Configuration Backups</a>
         </div>
     </div>
 
     <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
-        <button type="button" id="openRegisterUserModal" style="display:inline-block; background:#16a34a; color:white; text-decoration:none; border:none; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Register User</button>
+        <button type="button" id="openRegisterUserModal" class="admin-user-btn">Register User</button>
     </div>
 
     <div id="registerUserModal" style="display:none; position:fixed; inset:0; background:rgba(17,24,39,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
@@ -90,8 +116,8 @@
                 </div>
 
                 <div style="display:flex; gap:10px; justify-content:flex-end;">
-                    <button type="button" id="cancelRegisterUserModal" style="display:inline-block; background:#e5e7eb; color:#111827; border:none; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Cancel</button>
-                    <button type="submit" style="display:inline-block; background:#16a34a; color:white; text-decoration:none; border:none; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Create</button>
+                    <button type="button" id="cancelRegisterUserModal" class="admin-user-btn">Cancel</button>
+                    <button type="submit" class="admin-user-btn">Create</button>
                 </div>
             </form>
         </div>
@@ -133,7 +159,7 @@
                                 </span>
                             </td>
                             <td style="padding:12px;">
-                                <a href="{{ route('admin.users.profile', $item->id) }}" style="display:inline-block; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">View User Profile</a>
+                                <a href="{{ route('admin.users.profile', $item->id) }}" class="admin-user-btn admin-user-btn-sm">View User Profile</a>
                             </td>
                         </tr>
                     @empty
@@ -179,7 +205,7 @@
                                 </span>
                             </td>
                             <td style="padding:12px;">
-                                <a href="{{ route('admin.users.profile', $item->id) }}" style="display:inline-block; background:#4f46e5; color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:600;">View User Profile</a>
+                                <a href="{{ route('admin.users.profile', $item->id) }}" class="admin-user-btn admin-user-btn-sm">View User Profile</a>
                             </td>
                         </tr>
                     @empty
