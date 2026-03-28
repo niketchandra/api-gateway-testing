@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Workspace;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
@@ -15,6 +17,41 @@ use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
+    public function selectWorkspace(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'workspace_id' => ['nullable', 'integer', 'exists:workspaces,id'],
+        ]);
+
+        if (empty($validated['workspace_id'])) {
+            $request->session()->forget('selected_workspace_id');
+
+            return redirect()->back();
+        }
+
+        $workspaceId = (int) $validated['workspace_id'];
+        $workspace = Workspace::findOrFail($workspaceId);
+        $user = Auth::user();
+        $userRole = (int) ($user->rbac_id ?? 0);
+
+        $isAllowed = false;
+        if ($userRole === 100) {
+            $isAllowed = (int) $workspace->org_id === (int) ($user->org_id ?? 200);
+        } else {
+            $isAllowed = $user->workspaces()->where('workspaces.id', $workspaceId)->exists();
+        }
+
+        if (!$isAllowed) {
+            return redirect()->back()->withErrors([
+                'workspace_id' => 'You are not allowed to access the selected workspace.',
+            ]);
+        }
+
+        $request->session()->put('selected_workspace_id', $workspaceId);
+
+        return redirect()->back();
+    }
+
     /**
      * Show the dashboard view
      */

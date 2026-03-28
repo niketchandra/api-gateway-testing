@@ -1019,6 +1019,12 @@ Content-Type: application/json
 
 **Query Parameters** or **Request Body**:
 - `systemId` (required, integer): The system ID to deregister
+- `password` (optional, string): User password
+- `pin` (optional, 5-digit string): User PIN
+
+**Credential Requirement**:
+- Provide at least one of `password` or `pin`.
+- `pin` is a valid alternative to `password`.
 
 **Response** (200):
 ```json
@@ -1032,6 +1038,7 @@ Content-Type: application/json
 **Error Responses**:
 - `400`: systemId is required
 - `401`: Unauthorized (invalid or missing PAT token)
+- `422`: Either password or pin is required, or credential is invalid
 - `403`: Unauthorized (system belongs to another user)
 - `404`: System not found
 
@@ -1068,6 +1075,12 @@ Content-Type: application/json
 
 **Query Parameters** or **Request Body**:
 - `systemId` (required, integer): The system ID to force deregister
+- `password` (optional, string): Admin password
+- `pin` (optional, 5-digit string): Admin PIN
+
+**Credential Requirement**:
+- Provide at least one of `password` or `pin`.
+- `pin` is a valid alternative to `password`.
 
 **Response** (200):
 ```json
@@ -1082,6 +1095,7 @@ Content-Type: application/json
 **Error Responses**:
 - `400`: systemId is required
 - `401`: Unauthorized (invalid or missing session token)
+- `422`: Either password or pin is required, or credential is invalid
 - `404`: System not found
 
 **Example** (via query parameter):
@@ -1127,6 +1141,12 @@ Content-Type: application/json
 
 **Query Parameters** or **Request Body**:
 - `systemId` (required, integer): The system ID to reactivate
+- `password` (optional, string): User password
+- `pin` (optional, 5-digit string): User PIN
+
+**Credential Requirement**:
+- Provide at least one of `password` or `pin`.
+- `pin` is a valid alternative to `password`.
 
 **Response** (200):
 ```json
@@ -1140,6 +1160,7 @@ Content-Type: application/json
 **Error Responses**:
 - `400`: systemId is required
 - `401`: Unauthorized (invalid or missing PAT token)
+- `422`: Either password or pin is required, or credential is invalid
 - `403`: Unauthorized (system belongs to another user)
 - `404`: System not found
 
@@ -1180,6 +1201,12 @@ Content-Type: application/json
 
 **Query Parameters** or **Request Body**:
 - `systemId` (required, integer): The system ID to force reactivate
+- `password` (optional, string): Admin password
+- `pin` (optional, 5-digit string): Admin PIN
+
+**Credential Requirement**:
+- Provide at least one of `password` or `pin`.
+- `pin` is a valid alternative to `password`.
 
 **Response** (200): When system was successfully reactivated
 ```json
@@ -1206,6 +1233,7 @@ Content-Type: application/json
 **Error Responses**:
 - `400`: systemId is required
 - `401`: Unauthorized (invalid or missing session token)
+- `422`: Either password or pin is required, or credential is invalid
 - `404`: System not found
 
 **Example** (via query parameter with POST):

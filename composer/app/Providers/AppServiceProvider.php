@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\AdminSetting;
+use App\Models\Workspace;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
@@ -22,8 +24,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $defaultLogoUrl = asset('branding/atglance-logo.png');
+        $defaultFaviconUrl = asset('branding/favicon.ico');
+
         $sharedSettings = [
-            'siteLogoUrl' => '',
+            'siteLogoUrl' => $defaultLogoUrl,
+            'siteFaviconUrl' => $defaultFaviconUrl,
             'siteContent' => '',
             'siteFeatures' => [],
             'ssoEnabled' => false,
@@ -68,6 +74,13 @@ class AppServiceProvider extends ServiceProvider
                         $sharedSettings['siteLogoUrl'] = rtrim($baseUrl, '/') . '/' . ltrim($storedLogoPath, '/');
                     }
                 }
+                $faviconOverrideUrl = trim((string) AdminSetting::getValue('site_favicon_url', ''));
+                if ($faviconOverrideUrl !== '') {
+                    $sharedSettings['siteFaviconUrl'] = $faviconOverrideUrl;
+                } elseif (!empty($sharedSettings['siteLogoUrl'])) {
+                    $sharedSettings['siteFaviconUrl'] = (string) $sharedSettings['siteLogoUrl'];
+                }
+
                 $sharedSettings['siteContent'] = (string) AdminSetting::getValue('site_content', '');
 
                 $featuresRaw = AdminSetting::getValue('site_features', '[]');
@@ -99,7 +112,8 @@ class AppServiceProvider extends ServiceProvider
             }
         } catch (\Throwable $e) {
             $sharedSettings = [
-                'siteLogoUrl' => '',
+                'siteLogoUrl' => $defaultLogoUrl,
+                'siteFaviconUrl' => $defaultFaviconUrl,
                 'siteContent' => '',
                 'siteFeatures' => [],
                 'ssoEnabled' => false,
@@ -109,6 +123,55 @@ class AppServiceProvider extends ServiceProvider
         }
 
         View::share($sharedSettings);
+
+        View::composer('*', function ($view) {
+            $workspaceSelectorWorkspaces = collect();
+            $selectedWorkspaceId = null;
+
+            try {
+                if (
+                    Auth::check()
+                    && Schema::hasTable('workspaces')
+                    && Schema::hasTable('workspace_user')
+                ) {
+                    $user = Auth::user();
+
+                    if ((int) ($user->rbac_id ?? 0) === 100) {
+                        $workspaceSelectorWorkspaces = Workspace::query()
+                            ->where('org_id', (int) ($user->org_id ?? 200))
+                            ->orderBy('name')
+                            ->get(['id', 'name']);
+                    } else {
+                        $workspaceSelectorWorkspaces = $user->workspaces()
+                            ->orderBy('workspaces.name')
+                            ->get(['workspaces.id', 'workspaces.name']);
+                    }
+
+                    $allowedWorkspaceIds = $workspaceSelectorWorkspaces
+                        ->pluck('id')
+                        ->map(fn ($id) => (int) $id)
+                        ->all();
+
+                    $selectedWorkspaceId = (int) session('selected_workspace_id', 0);
+
+                    if (!empty($allowedWorkspaceIds)) {
+                        if (!in_array($selectedWorkspaceId, $allowedWorkspaceIds, true)) {
+                            $selectedWorkspaceId = $allowedWorkspaceIds[0];
+                            session(['selected_workspace_id' => $selectedWorkspaceId]);
+                        }
+                    } else {
+                        $selectedWorkspaceId = null;
+                        session()->forget('selected_workspace_id');
+                    }
+                }
+            } catch (\Throwable $e) {
+                $workspaceSelectorWorkspaces = collect();
+                $selectedWorkspaceId = null;
+            }
+
+            $view->with('workspaceSelectorWorkspaces', $workspaceSelectorWorkspaces);
+            $view->with('selectedWorkspaceId', $selectedWorkspaceId);
+        });
     }
 
     private function getEnvValue(string $key, string $default = ''): string

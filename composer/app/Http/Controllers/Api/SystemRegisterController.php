@@ -6,9 +6,47 @@ use App\Http\Controllers\Controller;
 use App\Models\PatToken;
 use App\Models\SystemRegister;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class SystemRegisterController extends Controller
 {
+    /**
+     * Require either password or PIN for sensitive system state changes.
+     */
+    private function validatePasswordOrPin(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $password = trim((string) $request->input('password', ''));
+        $pin = trim((string) $request->input('pin', ''));
+
+        if ($password === '' && $pin === '') {
+            return response()->json([
+                'message' => 'Either password or pin is required'
+            ], 422);
+        }
+
+        $passwordHash = $user->password_hash ?? $user->password;
+        $pinHash = $user->pin;
+
+        $passwordValid = $password !== '' && !empty($passwordHash) && Hash::check($password, $passwordHash);
+        $pinValid = $pin !== '' && !empty($pinHash) && Hash::check($pin, $pinHash);
+
+        if (!$passwordValid && !$pinValid) {
+            return response()->json([
+                'message' => 'Invalid password or pin'
+            ], 422);
+        }
+
+        return null;
+    }
+
     /**
      * Get all system registers for the authenticated user
      */
@@ -169,6 +207,11 @@ class SystemRegisterController extends Controller
         }
         
         $user = $request->user();
+
+        $credentialError = $this->validatePasswordOrPin($request);
+        if ($credentialError) {
+            return $credentialError;
+        }
         
         // Find the system by ID
         $system = SystemRegister::find($systemId);
@@ -215,6 +258,11 @@ class SystemRegisterController extends Controller
         }
 
         $user = $request->user();
+
+        $credentialError = $this->validatePasswordOrPin($request);
+        if ($credentialError) {
+            return $credentialError;
+        }
         
         // Find the system by ID
         $system = SystemRegister::find($systemId);
@@ -256,6 +304,11 @@ class SystemRegisterController extends Controller
         }
         
         $user = $request->user();
+
+        $credentialError = $this->validatePasswordOrPin($request);
+        if ($credentialError) {
+            return $credentialError;
+        }
         
         // Find the system by ID
         $system = SystemRegister::find($systemId);
@@ -311,6 +364,11 @@ class SystemRegisterController extends Controller
         }
 
         $user = $request->user();
+
+        $credentialError = $this->validatePasswordOrPin($request);
+        if ($credentialError) {
+            return $credentialError;
+        }
         
         // Find the system by ID
         $system = SystemRegister::find($systemId);

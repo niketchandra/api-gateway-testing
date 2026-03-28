@@ -19,9 +19,9 @@
                         brand: {
                             50: '#effdf7',
                             100: '#d8f9e8',
-                            500: '#10b981',
-                            600: '#0f9f71',
-                            700: '#0c7e5a'
+                            500: '#444444',
+                            600: '#555555',
+                            700: '#666666'
                         }
                     },
                     boxShadow: {
@@ -97,19 +97,33 @@
                     >
                 </div>
 
-                <div>
-                    <label for="app_url" class="block text-sm font-semibold text-slate-800">Domain or IP</label>
-                    <input
-                        id="app_url"
-                        name="app_url"
-                        type="text"
-                        required
-                        value="{{ old('app_url', $defaultDomain ?? request()->getHttpHost()) }}"
-                        placeholder="example.com or 192.168.1.50:8000"
-                        class="mt-2 w-full rounded-xl border border-cccccc bg-white px-4 py-3 text-sm outline-none transition focus:border-black focus:ring-4 focus:ring-slate-200"
-                    >
-                    <p class="mt-2 text-xs text-slate-500">Do not include http:// or https://</p>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="app_ip" class="block text-sm font-semibold text-slate-800">IP Address</label>
+                        <input
+                            id="app_ip"
+                            name="app_ip"
+                            type="text"
+                            required
+                            value="{{ old('app_ip', $defaultIpAddress ?? '127.0.0.1') }}"
+                            placeholder="192.168.1.2:8000"
+                            class="mt-2 w-full rounded-xl border border-cccccc bg-white px-4 py-3 text-sm outline-none transition focus:border-black focus:ring-4 focus:ring-slate-200"
+                        >
+                    </div>
+                    <div>
+                        <label for="app_domain" class="block text-sm font-semibold text-slate-800">Domain Alias (optional)</label>
+                        <input
+                            id="app_domain"
+                            name="app_domain"
+                            type="text"
+                            value="{{ old('app_domain', '') }}"
+                            placeholder="atglance.org_name.com"
+                            class="mt-2 w-full rounded-xl border border-cccccc bg-white px-4 py-3 text-sm outline-none transition focus:border-black focus:ring-4 focus:ring-slate-200"
+                        >
+                    </div>
                 </div>
+                <p class="text-xs text-slate-500">Do not include http:// or https://</p>
+                <p class="text-xs text-slate-600">Note: The domain can also be configured via the Enterprise Console. Please ensure that a valid and appropriate IP address is provided during the application installation process.</p>
 
                 <div>
                     <label for="use_https" class="block text-sm font-semibold text-slate-800">Use HTTPS</label>
@@ -118,8 +132,8 @@
                         name="use_https"
                         class="mt-2 w-full rounded-xl border border-cccccc bg-white px-4 py-3 text-sm outline-none transition focus:border-black focus:ring-4 focus:ring-slate-200"
                     >
-                        <option value="1" {{ old('use_https', '1') === '1' ? 'selected' : '' }}>Yes</option>
-                        <option value="0" {{ old('use_https') === '0' ? 'selected' : '' }}>No</option>
+                        <option value="1" {{ old('use_https', '0') === '1' ? 'selected' : '' }}>Yes</option>
+                        <option value="0" {{ old('use_https', '0') === '0' ? 'selected' : '' }}>No</option>
                     </select>
                 </div>
 

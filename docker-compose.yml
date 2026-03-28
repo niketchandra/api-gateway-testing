@@ -1,3 +1,100 @@
+# services:
+#   mysql:
+#     image: niketchandra/atglance-mysql:1.4
+#     # env_file:
+#     #   - ./.env.docker
+#     ports:
+#       - "3306:3306"
+#     volumes:
+#       - mysql_data:/var/lib/mysql
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "--password="]
+#       interval: 5s
+#       timeout: 5s
+#       retries: 12
+#       start_period: 120s
+#     environment:
+#       MYSQL_ALLOW_EMPTY_PASSWORD: yes
+#       MYSQL_DATABASE: atglance
+#       MYSQL_ROOT_HOST: '%'
+
+#   redis:
+#     image: niketchandra/atglance-redis:1.4
+#     ports:
+#       - "6379:6379"
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 5s
+#       timeout: 3s
+#       retries: 10
+
+#   api:
+#     build: .
+#     image: niketchandra/atglance-api:1.5
+#     command:
+#       - sh
+#       - -lc
+#       - |
+#         if [ ! -f /app/vendor/autoload.php ]; then
+#           composer install --no-interaction --prefer-dist --optimize-autoloader;
+#         fi
+#         php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+#     # env_file:
+#     #   - ./.env.docker
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./composer:/app
+#       - composer_vendor:/app/vendor
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+#       redis:
+#         condition: service_healthy
+
+#   queue-worker:
+#     build: .
+#     image: niketchandra/atglance-queue-worker:1.5
+#     working_dir: /app
+#     command:
+#       - sh
+#       - -lc
+#       - |
+#         if [ ! -f /app/vendor/autoload.php ]; then
+#           composer install --no-interaction --prefer-dist --optimize-autoloader;
+#         fi
+#         php artisan queue:work redis --tries=5 --backoff=30,60,120,300,600 --timeout=60 --sleep=3 --max-jobs=1000 --verbose
+#     # env_file:
+#     #   - ./.env.docker
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+#       redis:
+#         condition: service_healthy
+#     volumes:
+#       - ./composer:/app
+#       - composer_vendor:/app/vendor
+#     restart: unless-stopped
+
+#   phpmyadmin:
+#     image: niketchandra/atglance-phpmyadmin:1.4
+#     # env_file:
+#     #   - ./.env.docker
+#     ports:
+#       - "8080:80"
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+#     environment:
+#       PMA_HOST: mysql
+#       PMA_PORT: 3306
+#       PMA_USER: root
+#       PMA_PASSWORD: ''
+
+# volumes:
+#   mysql_data:
+#   composer_vendor:
+
 services:
   mysql:
     image: mysql:8.0

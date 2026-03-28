@@ -8,8 +8,10 @@ use App\Models\Organization;
 use App\Models\Service;
 use App\Models\SystemRegister;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
@@ -22,7 +24,12 @@ class AdminDashboardController extends Controller
 {
     public function index(): View
     {
-        $totalUsers = User::count();
+        $totalUsers = User::query()
+            ->where(function ($query) {
+                $query->whereNull('rbac_id')
+                    ->orWhere('rbac_id', '!=', 100);
+            })
+            ->count();
         $totalSystems = SystemRegister::count();
         $totalServices = Service::count();
         $totalConfigFiles = ConfigurationFile::count();
@@ -37,7 +44,10 @@ class AdminDashboardController extends Controller
 
     public function usersIndex(): View
     {
-        $users = User::query()
+        $actor = Auth::user();
+        $visibleWorkspaceIds = $this->visibleWorkspaceIdsForAdmin($actor);
+
+        $usersQuery = User::query()
             ->leftJoin('system_register', 'system_register.user_id', '=', 'users.id')
             ->leftJoin('services', 'services.user_id', '=', 'users.id')
             ->leftJoin('configuration_files', 'configuration_files.user_id', '=', 'users.id')
@@ -54,12 +64,27 @@ class AdminDashboardController extends Controller
             ->where(function ($query) {
                 $query->whereNull('users.rbac_id')
                     ->orWhereNotIn('users.rbac_id', [100, 101]);
-            })
+            });
+
+        if ($this->isAdminOnly($actor)) {
+            if (empty($visibleWorkspaceIds)) {
+                $usersQuery->whereRaw('1 = 0');
+            } else {
+                $usersQuery->whereExists(function ($query) use ($visibleWorkspaceIds) {
+                    $query->select(DB::raw(1))
+                        ->from('workspace_user as wu')
+                        ->whereColumn('wu.user_id', 'users.id')
+                        ->whereIn('wu.workspace_id', $visibleWorkspaceIds);
+                });
+            }
+        }
+
+        $users = $usersQuery
             ->groupBy('users.id', 'users.name', 'users.email', 'users.status', 'users.created_at')
             ->orderByDesc('users.created_at')
             ->paginate(25, ['*'], 'users_page');
 
-        $adminUsers = User::query()
+        $adminUsersQuery = User::query()
             ->leftJoin('system_register', 'system_register.user_id', '=', 'users.id')
             ->leftJoin('services', 'services.user_id', '=', 'users.id')
             ->leftJoin('configuration_files', 'configuration_files.user_id', '=', 'users.id')
@@ -73,7 +98,22 @@ class AdminDashboardController extends Controller
                 DB::raw('COUNT(DISTINCT services.service_id) as service_count'),
                 DB::raw('COUNT(DISTINCT configuration_files.id) as configuration_count')
             )
-            ->where('users.rbac_id', 101)
+            ->where('users.rbac_id', 101);
+
+        if ($this->isAdminOnly($actor)) {
+            if (empty($visibleWorkspaceIds)) {
+                $adminUsersQuery->whereRaw('1 = 0');
+            } else {
+                $adminUsersQuery->whereExists(function ($query) use ($visibleWorkspaceIds) {
+                    $query->select(DB::raw(1))
+                        ->from('workspace_user as wu')
+                        ->whereColumn('wu.user_id', 'users.id')
+                        ->whereIn('wu.workspace_id', $visibleWorkspaceIds);
+                });
+            }
+        }
+
+        $adminUsers = $adminUsersQuery
             ->groupBy('users.id', 'users.name', 'users.email', 'users.status', 'users.created_at')
             ->orderByDesc('users.created_at')
             ->paginate(25, ['*'], 'admin_page');
@@ -83,6 +123,7 @@ class AdminDashboardController extends Controller
 
     public function createUser(Request $request): RedirectResponse
     {
+        $actor = Auth::user();
         $validated = $request->validate([
             'username' => ['required', 'string', 'max:255'],
             'first_name' => ['required', 'string', 'max:255'],
@@ -90,35 +131,80 @@ class AdminDashboardController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', Rule::in(['user', 'admin'])],
+            'workspace_id' => ['nullable', 'integer', 'exists:workspaces,id'],
         ]);
 
         $rbacId = $validated['role'] === 'admin' ? 101 : 102;
 
-        User::create([
+        $workspaceId = !empty($validated['workspace_id'])
+            ? (int) $validated['workspace_id']
+            : (int) $request->session()->get('selected_workspace_id', 0);
+
+        $workspace = null;
+        if ($workspaceId > 0) {
+            $workspace = Workspace::find($workspaceId);
+
+            if ($workspace === null || !$this->canManageWorkspaceUsers($actor, $workspace)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'workspace_id' => 'You are not allowed to assign users to the selected workspace.',
+                    ]);
+            }
+        }
+
+        $newUser = User::create([
             'name' => $validated['username'],
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
             'password' => $validated['password'],
             'rbac_id' => $rbacId,
+            'org_id' => (int) ($actor->org_id ?? 200),
         ]);
+
+        if ($workspace !== null) {
+            $newUser->workspaces()->syncWithoutDetaching([
+                $workspaceId => ['is_admin' => $rbacId === 101],
+            ]);
+        }
 
         return redirect()->route('admin.users')->with('success', 'User registered successfully.');
     }
 
     public function userProfile(User $user): View
     {
+        $actor = Auth::user();
+        if (!$this->canViewTargetUser($actor, $user)) {
+            abort(403);
+        }
+
         $stats = [
             'systems' => SystemRegister::where('user_id', $user->id)->count(),
             'services' => Service::where('user_id', $user->id)->count(),
             'configurations' => ConfigurationFile::where('user_id', $user->id)->count(),
         ];
 
-        return view('admin.user-profile', compact('user', 'stats'));
+        $assignedWorkspaces = $user->workspaces()
+            ->orderBy('workspaces.name')
+            ->get(['workspaces.id', 'workspaces.name', 'workspace_user.is_admin']);
+
+        $canEditUserProfile = $this->canEditTargetUser($actor, $user);
+
+        return view('admin.user-profile', compact('user', 'stats', 'assignedWorkspaces', 'canEditUserProfile'));
     }
 
     public function updateUser(Request $request, User $user): RedirectResponse
     {
+        $actor = Auth::user();
+        if (!$this->canEditTargetUser($actor, $user)) {
+            return redirect()
+                ->route('admin.users.profile', ['user' => $user->id])
+                ->withErrors([
+                    'authorization' => 'You are not allowed to modify this profile.',
+                ]);
+        }
+
         $validated = $request->validate([
             'username' => ['required', 'string', 'max:255'],
             'first_name' => ['nullable', 'string', 'max:255'],
@@ -143,6 +229,11 @@ class AdminDashboardController extends Controller
 
     public function userDashboard(User $user): View
     {
+        $actor = Auth::user();
+        if (!$this->canViewTargetUser($actor, $user)) {
+            abort(403);
+        }
+
         $systems = SystemRegister::query()
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
@@ -169,6 +260,11 @@ class AdminDashboardController extends Controller
 
     public function userSystemServices(User $user, int $systemId): View
     {
+        $actor = Auth::user();
+        if (!$this->canViewTargetUser($actor, $user)) {
+            abort(403);
+        }
+
         $system = SystemRegister::query()
             ->where('id', $systemId)
             ->where('user_id', $user->id)
@@ -202,6 +298,11 @@ class AdminDashboardController extends Controller
 
     public function userServiceVersions(User $user, int $serviceId): View
     {
+        $actor = Auth::user();
+        if (!$this->canViewTargetUser($actor, $user)) {
+            abort(403);
+        }
+
         $service = Service::query()
             ->where('service_id', $serviceId)
             ->where('user_id', $user->id)
@@ -229,6 +330,336 @@ class AdminDashboardController extends Controller
         return view('admin.user-service-versions', compact('user', 'service', 'versions'));
     }
 
+    public function enterpriseConsole(): View
+    {
+        $actor = Auth::user();
+        $defaultOrg = Organization::find(200) ?? Organization::first();
+        $workspaces = Workspace::query()
+            ->where('org_id', (int) ($actor->org_id ?? ($defaultOrg->id ?? 200)))
+            ->orderBy('name')
+            ->get();
+
+        $adminCandidates = User::query()
+            ->where('rbac_id', 101)
+            ->where('org_id', (int) ($actor->org_id ?? 200))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return view('admin.enterprise-console', [
+            'workspaces' => $workspaces,
+            'adminCandidates' => $adminCandidates,
+        ]);
+    }
+
+    public function createEnterpriseWorkspace(Request $request): RedirectResponse
+    {
+        $actor = Auth::user();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:workspaces,name'],
+            'description' => ['nullable', 'string', 'max:512'],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'admin_user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $workspace = Workspace::create([
+            'org_id' => (int) ($actor->org_id ?? 200),
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'status' => $validated['status'],
+        ]);
+
+        if (!empty($validated['admin_user_id'])) {
+            $adminUser = User::query()
+                ->where('id', (int) $validated['admin_user_id'])
+                ->where('rbac_id', 101)
+                ->where('org_id', (int) ($actor->org_id ?? 200))
+                ->first();
+
+            if ($adminUser !== null) {
+                $workspace->addUser($adminUser->id, true);
+            }
+        }
+
+        return redirect()
+            ->route('enterprise.console')
+            ->with('success', 'Workspace created successfully.');
+    }
+
+    public function adminWorkspaces(): View
+    {
+        $actor = Auth::user();
+        $workspaces = Workspace::query()
+            ->join('workspace_user', 'workspace_user.workspace_id', '=', 'workspaces.id')
+            ->where('workspace_user.user_id', $actor->id)
+            ->where('workspace_user.is_admin', true)
+            ->orderBy('workspaces.name')
+            ->get(['workspaces.id', 'workspaces.name', 'workspaces.description', 'workspaces.status']);
+
+        return view('admin.manage-workspaces', [
+            'workspaces' => $workspaces,
+        ]);
+    }
+
+    public function viewWorkspace(int $workspaceId): View
+    {
+        $actor = Auth::user();
+        $workspace = Workspace::findOrFail($workspaceId);
+        if (!$this->canManageWorkspaceUsers($actor, $workspace)) {
+            abort(403);
+        }
+
+        $isSuperAdmin = $this->isSuperAdmin($actor);
+        $admins = $workspace->admins()->get();
+        $regularUsers = $workspace->regularUsers()->get();
+        $allAdmins = User::query()
+            ->where('rbac_id', 101)
+            ->where('org_id', (int) ($workspace->org_id ?? 200))
+            ->orderBy('name')
+            ->get();
+        $assignedUserIds = $workspace->users()->pluck('users.id')->all();
+        $allRegularUsers = User::query()
+            ->where('org_id', (int) ($workspace->org_id ?? 200))
+            ->where(function ($query) {
+                $query->whereNull('rbac_id')
+                    ->orWhere('rbac_id', 102);
+            })
+            ->whereNotIn('id', $assignedUserIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        $workspaceShowRouteName = $isSuperAdmin ? 'workspace.detail' : 'admin.workspaces.show';
+        $workspaceAddUserRouteName = $isSuperAdmin ? 'workspace.users.add' : 'admin.workspaces.users.add';
+        $workspaceRemoveUserRouteName = $isSuperAdmin ? 'workspace.users.remove' : 'admin.workspaces.users.remove';
+        $workspaceUpdateRouteName = $isSuperAdmin ? 'workspace.update' : null;
+
+        return view('admin.workspace-detail', [
+            'workspace' => $workspace,
+            'admins' => $admins,
+            'regularUsers' => $regularUsers,
+            'allAdmins' => $allAdmins,
+            'allRegularUsers' => $allRegularUsers,
+            'isSuperAdmin' => $isSuperAdmin,
+            'canEditWorkspaceMetadata' => $isSuperAdmin,
+            'canManageAdmins' => $isSuperAdmin,
+            'workspaceShowRouteName' => $workspaceShowRouteName,
+            'workspaceUpdateRouteName' => $workspaceUpdateRouteName,
+            'workspaceAddUserRouteName' => $workspaceAddUserRouteName,
+            'workspaceRemoveUserRouteName' => $workspaceRemoveUserRouteName,
+        ]);
+    }
+
+    public function updateWorkspace(Request $request, int $workspaceId): RedirectResponse
+    {
+        $actor = Auth::user();
+        if (!$this->isSuperAdmin($actor)) {
+            abort(403);
+        }
+
+        $workspace = Workspace::findOrFail($workspaceId);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:512'],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
+        ]);
+
+        $workspace->update($validated);
+
+        return redirect()
+            ->route('workspace.detail', $workspaceId)
+            ->with('success', 'Workspace updated successfully.');
+    }
+
+    public function addAdminToWorkspace(Request $request, int $workspaceId): RedirectResponse
+    {
+        $actor = Auth::user();
+        if (!$this->isSuperAdmin($actor)) {
+            abort(403);
+        }
+
+        $workspace = Workspace::findOrFail($workspaceId);
+
+        $validated = $request->validate([
+            'admin_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $admin = User::where('id', $validated['admin_id'])
+            ->where('rbac_id', 101)
+            ->firstOrFail();
+
+        $workspace->addUser($admin->id, true);
+
+        return redirect()
+            ->route('workspace.detail', $workspaceId)
+            ->with('success', 'Admin added to workspace.');
+    }
+
+    public function addUserToWorkspace(Request $request, int $workspaceId): RedirectResponse
+    {
+        $actor = Auth::user();
+        $workspace = Workspace::findOrFail($workspaceId);
+        if (!$this->canManageWorkspaceUsers($actor, $workspace)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $targetUser = User::findOrFail((int) $validated['user_id']);
+        if ((int) ($targetUser->rbac_id ?? 0) === 100) {
+            return redirect()->back()->withErrors([
+                'user_id' => 'Super admin cannot be added to a workspace as a regular member.',
+            ]);
+        }
+
+        if ($this->isAdminOnly($actor) && in_array((int) ($targetUser->rbac_id ?? 0), [100, 101], true)) {
+            return redirect()->back()->withErrors([
+                'user_id' => 'Admins can only add regular users to workspace.',
+            ]);
+        }
+
+        $workspace->addUser($targetUser->id, false);
+
+        $showRoute = $this->isSuperAdmin($actor) ? 'workspace.detail' : 'admin.workspaces.show';
+
+        return redirect()
+            ->route($showRoute, $workspaceId)
+            ->with('success', 'User added to workspace.');
+    }
+
+    public function removeUserFromWorkspace(int $workspaceId, int $userId): RedirectResponse
+    {
+        $actor = Auth::user();
+        $workspace = Workspace::findOrFail($workspaceId);
+        if (!$this->canManageWorkspaceUsers($actor, $workspace)) {
+            abort(403);
+        }
+
+        $targetUser = User::findOrFail($userId);
+        if ($this->isAdminOnly($actor) && in_array((int) ($targetUser->rbac_id ?? 0), [100, 101], true)) {
+            return redirect()->back()->withErrors([
+                'authorization' => 'Admins cannot remove admin members from a workspace.',
+            ]);
+        }
+
+        $workspace->removeUser($userId);
+
+        $showRoute = $this->isSuperAdmin($actor) ? 'workspace.detail' : 'admin.workspaces.show';
+
+        return redirect()
+            ->route($showRoute, $workspaceId)
+            ->with('success', 'User removed from workspace.');
+    }
+
+    private function isSuperAdmin(User $user): bool
+    {
+        return (int) ($user->rbac_id ?? 0) === 100;
+    }
+
+    private function isAdminOnly(User $user): bool
+    {
+        return (int) ($user->rbac_id ?? 0) === 101;
+    }
+
+    private function visibleWorkspaceIdsForAdmin(User $user): array
+    {
+        if (!$this->isAdminOnly($user)) {
+            return [];
+        }
+
+        return $user->workspaces()
+            ->pluck('workspaces.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function canViewTargetUser(User $actor, User $target): bool
+    {
+        if ($this->isSuperAdmin($actor)) {
+            return true;
+        }
+
+        if (!$this->isAdminOnly($actor)) {
+            return false;
+        }
+
+        return DB::table('workspace_user as actor_wu')
+            ->join('workspace_user as target_wu', 'target_wu.workspace_id', '=', 'actor_wu.workspace_id')
+            ->where('actor_wu.user_id', $actor->id)
+            ->where('target_wu.user_id', $target->id)
+            ->exists();
+    }
+
+    private function canEditTargetUser(User $actor, User $target): bool
+    {
+        if ($this->isSuperAdmin($actor)) {
+            return (int) ($target->rbac_id ?? 0) !== 100;
+        }
+
+        if (!$this->isAdminOnly($actor)) {
+            return false;
+        }
+
+        if (in_array((int) ($target->rbac_id ?? 0), [100, 101], true)) {
+            return false;
+        }
+
+        return $this->canViewTargetUser($actor, $target);
+    }
+
+    private function canManageWorkspaceUsers(User $actor, Workspace $workspace): bool
+    {
+        if ($this->isSuperAdmin($actor)) {
+            return (int) ($workspace->org_id ?? 200) === (int) ($actor->org_id ?? 200);
+        }
+
+        if (!$this->isAdminOnly($actor)) {
+            return false;
+        }
+
+        return DB::table('workspace_user')
+            ->where('workspace_id', $workspace->id)
+            ->where('user_id', $actor->id)
+            ->where('is_admin', true)
+            ->exists();
+    }
+
+    public function createEnterpriseOrganization(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:organizations,name'],
+            'description' => ['nullable', 'string', 'max:512'],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'admin_user_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        $newOrgId = (int) ((Organization::max('id') ?? 200) + 1);
+
+        $organization = Organization::create([
+            'id' => $newOrgId,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'status' => $validated['status'],
+        ]);
+
+        if (!empty($validated['admin_user_id'])) {
+            $adminUser = User::query()
+                ->where('id', $validated['admin_user_id'])
+                ->where('rbac_id', 101)
+                ->first();
+
+            if ($adminUser !== null) {
+                $adminUser->org_id = $organization->id;
+                $adminUser->save();
+            }
+        }
+
+        return redirect()
+            ->route('enterprise.console')
+            ->with('success', 'Organization created and admin assignment updated.');
+    }
+
     public function settings(): View
     {
         $this->syncStorageBaseUrlsToDatabase();
@@ -237,9 +668,17 @@ class AdminDashboardController extends Controller
         $siteUrl = rtrim((string) config('app.url', ''), '/');
         $siteDomain = parse_url($siteUrl, PHP_URL_HOST) ?: $siteUrl;
         $sitePort = parse_url($siteUrl, PHP_URL_PORT);
+        $siteScheme = strtolower((string) (parse_url($siteUrl, PHP_URL_SCHEME) ?: 'http'));
         if (!empty($sitePort) && is_numeric($sitePort)) {
             $siteDomain .= ':' . $sitePort;
         }
+
+        $siteDomainAlias = trim((string) AdminSetting::getValue('site_domain_alias', ''));
+        $siteDomainAliasIp = trim((string) AdminSetting::getValue('site_domain_alias_ip', ''));
+        if ($siteDomainAliasIp === '') {
+            $siteDomainAliasIp = $this->resolveApplicationIpAddress();
+        }
+        $siteHttpsEnabled = $this->isFeatureEnabledSetting('site_https_enabled', $siteScheme === 'https');
 
         $organizationName = Organization::query()
             ->where('id', 200)
@@ -248,7 +687,39 @@ class AdminDashboardController extends Controller
         $localStorageBaseUrl = $this->resolveStorageBaseUrl('local');
         $s3StorageBaseUrl = $this->resolveStorageBaseUrl('s3');
 
-        $useS3Storage = $this->isS3Enabled();
+        $useS3Storage = $this->isFeatureEnabledSetting('s3_enabled', $this->isS3Enabled());
+        $backupRestoreEnabled = $this->isFeatureEnabledSetting('backup_restore_enabled');
+        $backupConfigToS3 = $this->isFeatureEnabledSetting('backup_config_to_s3');
+        $backupPortalToS3 = $this->isFeatureEnabledSetting('backup_portal_to_s3');
+        $backupConfigCron = $this->normalizeCronFrequency((string) AdminSetting::getValue('backup_config_cron', ''));
+        $backupPortalCron = $this->normalizeCronFrequency((string) AdminSetting::getValue('backup_portal_cron', ''));
+        $migrationEnabled = $this->isFeatureEnabledSetting('migration_enabled', $useS3Storage);
+
+        if (!$backupConfigToS3) {
+            $backupConfigCron = '';
+        }
+
+        if (!$backupPortalToS3) {
+            $backupPortalCron = '';
+        }
+
+        $configuredCronSetups = [];
+        if ($backupConfigToS3 && $backupConfigCron !== '') {
+            $configuredCronSetups[] = [
+                'name' => 'Configuration files backup to S3',
+                'frequency' => $this->cronFrequencyLabel($backupConfigCron),
+                'expression' => $this->cronFrequencyExpression($backupConfigCron),
+            ];
+        }
+
+        if ($backupPortalToS3 && $backupPortalCron !== '') {
+            $configuredCronSetups[] = [
+                'name' => 'Portal backup (.env, settings, DB) to S3',
+                'frequency' => $this->cronFrequencyLabel($backupPortalCron),
+                'expression' => $this->cronFrequencyExpression($backupPortalCron),
+            ];
+        }
+
         $migrationDirection = (string) session('migration_direction', $useS3Storage ? 'local_to_s3' : 's3_to_local');
         if (!in_array($migrationDirection, ['local_to_s3', 's3_to_local'], true)) {
             $migrationDirection = $useS3Storage ? 'local_to_s3' : 's3_to_local';
@@ -283,6 +754,9 @@ class AdminDashboardController extends Controller
             'siteLogoUrlOverride' => AdminSetting::getValue('site_logo_url', ''),
             'siteDescription' => AdminSetting::getValue('site_description', AdminSetting::getValue('site_content', '')),
             'siteContent' => AdminSetting::getValue('site_content', ''),
+            'siteDomainAlias' => $siteDomainAlias,
+            'siteDomainAliasIp' => $siteDomainAliasIp,
+            'siteHttpsEnabled' => $siteHttpsEnabled,
             'siteMetadataText' => json_encode($siteMetadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
             'siteTagsText' => implode(',', $siteTags),
             'siteFeaturesText' => implode("\n", $siteFeatures),
@@ -293,6 +767,13 @@ class AdminDashboardController extends Controller
             'localStorageBaseUrl' => $localStorageBaseUrl,
             's3StorageBaseUrl' => $s3StorageBaseUrl,
             'hasS3Secret' => $s3Runtime['secret'] !== '',
+            'backupRestoreEnabled' => $backupRestoreEnabled,
+            'backupConfigToS3' => $backupConfigToS3,
+            'backupPortalToS3' => $backupPortalToS3,
+            'backupConfigCron' => $backupConfigCron,
+            'backupPortalCron' => $backupPortalCron,
+            'configuredCronSetups' => $configuredCronSetups,
+            'migrationEnabled' => $migrationEnabled,
             'migrationDirection' => $migrationDirection,
             'migrationKeepSource' => $migrationKeepSource,
             'migrationAnalysis' => is_array($migrationAnalysis) ? $migrationAnalysis : null,
@@ -329,11 +810,20 @@ class AdminDashboardController extends Controller
             'site_logo_url' => ['nullable', 'url', 'max:2048'],
             'site_logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
             'site_description' => ['nullable', 'string', 'max:5000'],
+            'site_domain_alias' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9.-]+$/'],
+            'site_domain_alias_ip' => ['nullable', 'ip'],
+            'site_https_enabled' => ['nullable', 'boolean'],
             'site_metadata' => ['nullable', 'string', 'max:20000'],
             'site_tags' => ['nullable', 'string', 'max:2000'],
             'site_features' => ['nullable', 'string'],
             'site_content' => ['nullable', 'string', 'max:5000'],
         ]);
+
+        $domainAlias = strtolower(trim((string) ($validated['site_domain_alias'] ?? ''), " ."));
+        $submittedAliasIp = trim((string) ($validated['site_domain_alias_ip'] ?? ''));
+        $domainAliasIp = $submittedAliasIp !== ''
+            ? $submittedAliasIp
+            : ($domainAlias !== '' ? $this->resolveApplicationIpAddress() : '');
 
         $metadata = [];
         if (!empty($validated['site_metadata'])) {
@@ -361,19 +851,29 @@ class AdminDashboardController extends Controller
 
         $logoUrl = trim((string) ($validated['site_logo_url'] ?? ''));
         if ($request->hasFile('site_logo')) {
-            $storageDisk = $this->resolveStorageDisk();
-            if ($storageDisk === 's3') {
-                $path = $request->file('site_logo')->store('site-settings', ['disk' => 's3', 'visibility' => 'public']);
-            } else {
-                $path = $request->file('site_logo')->store('site-settings', $storageDisk);
+            $uploadedLogo = $request->file('site_logo');
+            $logoExtension = strtolower((string) ($uploadedLogo?->extension() ?: 'png'));
+            if ($logoExtension === 'jpeg') {
+                $logoExtension = 'jpg';
             }
-            AdminSetting::putValue('site', 'site_logo_disk', $storageDisk);
-            AdminSetting::putValue('site', 'site_logo_path', (string) $path);
-            $logoUrl = '';
+
+            $logoFileName = 'site-logo.' . $logoExtension;
+            $brandingDirectory = public_path('branding');
+            File::ensureDirectoryExists($brandingDirectory);
+
+            $uploadedLogo->move($brandingDirectory, $logoFileName);
+
+            AdminSetting::putValue('site', 'site_logo_disk', 'public_static');
+            AdminSetting::putValue('site', 'site_logo_path', 'branding/' . $logoFileName);
+            $logoUrl = url('/branding/' . $logoFileName);
         }
 
         AdminSetting::putValue('site', 'site_logo_url', $logoUrl);
+        AdminSetting::putValue('site', 'site_favicon_url', $logoUrl);
         AdminSetting::putValue('site', 'site_description', $validated['site_description'] ?? '');
+        AdminSetting::putValue('site', 'site_domain_alias', $domainAlias);
+        AdminSetting::putValue('site', 'site_domain_alias_ip', $domainAliasIp);
+        AdminSetting::putValue('site', 'site_https_enabled', $request->boolean('site_https_enabled'));
         AdminSetting::putValue('site', 'site_metadata', $metadata);
         AdminSetting::putValue('site', 'site_tags', $tags);
         AdminSetting::putValue('site', 'site_features', $features);
@@ -382,9 +882,29 @@ class AdminDashboardController extends Controller
         return redirect()->route('admin.settings', ['tab' => 'site'])->with('success', 'Site settings updated successfully.');
     }
 
+    private function resolveApplicationIpAddress(): string
+    {
+        $storedIp = trim((string) AdminSetting::getValue('site_domain_alias_ip', ''));
+        if ($storedIp !== '' && filter_var($storedIp, FILTER_VALIDATE_IP)) {
+            return $storedIp;
+        }
+
+        $appUrlHost = (string) (parse_url((string) config('app.url', ''), PHP_URL_HOST) ?: '');
+        if ($appUrlHost !== '' && filter_var($appUrlHost, FILTER_VALIDATE_IP)) {
+            return $appUrlHost;
+        }
+
+        $serverAddr = (string) request()->server('SERVER_ADDR', '');
+        if ($serverAddr !== '' && filter_var($serverAddr, FILTER_VALIDATE_IP)) {
+            return $serverAddr;
+        }
+
+        return '127.0.0.1';
+    }
+
     public function updateS3Settings(Request $request): RedirectResponse
     {
-        $currentlyEnabled = $this->isS3Enabled();
+        $currentlyEnabled = $this->isFeatureEnabledSetting('s3_enabled', $this->isS3Enabled());
 
         $validated = $request->validate([
             's3_enabled' => ['nullable', 'boolean'],
@@ -441,6 +961,15 @@ class AdminDashboardController extends Controller
             'VERSION' => (string) config('app.version', '0.1.0'),
         ]);
 
+        AdminSetting::putValue('storage', 's3_enabled', $requestedEnabled ? 'true' : 'false');
+        AdminSetting::putValue('storage', 's3_access_key', $validated['s3_access_key']);
+        AdminSetting::putValue('storage', 's3_region', $validated['s3_region']);
+        AdminSetting::putValue('storage', 's3_bucket', $validated['s3_bucket']);
+
+        if ($resolvedSecret !== '') {
+            AdminSetting::putValue('storage', 's3_secret_key', $resolvedSecret, true);
+        }
+
         Config::set('filesystems.disks.s3.key', $validated['s3_access_key']);
         Config::set('filesystems.disks.s3.secret', $resolvedSecret);
         Config::set('filesystems.disks.s3.region', $validated['s3_region']);
@@ -450,6 +979,11 @@ class AdminDashboardController extends Controller
         $this->syncStorageBaseUrlsToDatabase();
 
         if (!$currentlyEnabled && $requestedEnabled) {
+            AdminSetting::putValue('storage', 'migration_enabled', 'true');
+            $this->setEnvironmentValues([
+                'MIGRATION_ENABLED' => 'true',
+            ]);
+
             return redirect()
                 ->route('admin.settings', ['tab' => 'migration'])
                 ->with('success', 'S3 has been enabled. Go ahead and migrate existing local data to S3 from the Migration tab.')
@@ -460,8 +994,97 @@ class AdminDashboardController extends Controller
         return redirect()->route('admin.settings', ['tab' => 's3'])->with('success', 'S3 settings saved successfully.');
     }
 
+    public function updateBackupRestoreSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'backup_restore_enabled' => ['nullable', 'boolean'],
+            'backup_config_to_s3' => ['nullable', 'boolean'],
+            'backup_portal_to_s3' => ['nullable', 'boolean'],
+            'backup_config_cron' => ['nullable', Rule::in(['hourly', 'every_six_hours', 'every_twelve_hours', 'daily', 'weekly', 'monthly'])],
+            'backup_portal_cron' => ['nullable', Rule::in(['daily', 'weekly', 'monthly'])],
+        ]);
+
+        $backupRestoreEnabled = $request->boolean('backup_restore_enabled');
+        $backupConfigToS3 = $request->boolean('backup_config_to_s3');
+        $backupPortalToS3 = $request->boolean('backup_portal_to_s3');
+
+        if (!$backupRestoreEnabled) {
+            $backupConfigToS3 = false;
+            $backupPortalToS3 = false;
+        }
+
+        $backupConfigCron = $backupConfigToS3
+            ? $this->normalizeCronFrequency((string) ($validated['backup_config_cron'] ?? ''))
+            : '';
+        $backupPortalCron = $backupPortalToS3
+            ? $this->normalizeCronFrequency((string) ($validated['backup_portal_cron'] ?? ''))
+            : '';
+
+        if ($backupConfigToS3 && $backupConfigCron === '') {
+            return back()
+                ->withErrors(['backup_config_cron' => 'Select cron frequency for configuration files backup.'])
+                ->withInput();
+        }
+
+        if ($backupPortalToS3 && $backupPortalCron === '') {
+            return back()
+                ->withErrors(['backup_portal_cron' => 'Select cron frequency for portal backup.'])
+                ->withInput();
+        }
+
+        if (($backupConfigToS3 || $backupPortalToS3) && !$this->isS3Enabled()) {
+            return back()
+                ->withErrors(['backup_restore_enabled' => 'Enable S3 configuration first to schedule S3 backups.'])
+                ->withInput();
+        }
+
+        AdminSetting::putValue('storage', 'backup_restore_enabled', $backupRestoreEnabled ? 'true' : 'false');
+        AdminSetting::putValue('storage', 'backup_config_to_s3', $backupConfigToS3 ? 'true' : 'false');
+        AdminSetting::putValue('storage', 'backup_portal_to_s3', $backupPortalToS3 ? 'true' : 'false');
+        AdminSetting::putValue('storage', 'backup_config_cron', $backupConfigCron);
+        AdminSetting::putValue('storage', 'backup_portal_cron', $backupPortalCron);
+        AdminSetting::putValue('storage', 'configuration_file_base_location', $backupConfigToS3 ? 's3' : 'local');
+
+        $this->setEnvironmentValues([
+            'CONFIGURATION_FILES_BASE_DISK' => $backupConfigToS3 ? 's3' : 'local',
+            'BACKUP_RESTORE_ENABLED' => $backupRestoreEnabled ? 'true' : 'false',
+            'BACKUP_CONFIG_TO_S3' => $backupConfigToS3 ? 'true' : 'false',
+            'BACKUP_PORTAL_TO_S3' => $backupPortalToS3 ? 'true' : 'false',
+            'BACKUP_CONFIG_CRON' => $backupConfigCron,
+            'BACKUP_PORTAL_CRON' => $backupPortalCron,
+        ]);
+
+        return redirect()
+            ->route('admin.settings', ['tab' => 'backup-restore'])
+            ->with('success', 'Backup and restore settings saved successfully.');
+    }
+
+    public function updateMigrationSettings(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'migration_enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $migrationEnabled = $request->boolean('migration_enabled');
+
+        AdminSetting::putValue('storage', 'migration_enabled', $migrationEnabled ? 'true' : 'false');
+        $this->setEnvironmentValues([
+            'MIGRATION_ENABLED' => $migrationEnabled ? 'true' : 'false',
+        ]);
+
+        return redirect()
+            ->route('admin.settings', ['tab' => 'migration'])
+            ->with('success', 'Migration settings saved successfully.');
+    }
+
     public function analyzeMigration(Request $request): RedirectResponse
     {
+        if (!$this->isFeatureEnabledSetting('migration_enabled')) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'migration'])
+                ->withErrors(['migration' => 'Enable migration from the Migration tab before running migration actions.']);
+        }
+
         $validated = $request->validate([
             'direction' => ['required', Rule::in(['local_to_s3', 's3_to_local'])],
             'keep_source' => ['nullable', 'boolean'],
@@ -479,6 +1102,12 @@ class AdminDashboardController extends Controller
 
     public function startMigration(Request $request): RedirectResponse
     {
+        if (!$this->isFeatureEnabledSetting('migration_enabled')) {
+            return redirect()
+                ->route('admin.settings', ['tab' => 'migration'])
+                ->withErrors(['migration' => 'Enable migration from the Migration tab before running migration actions.']);
+        }
+
         $validated = $request->validate([
             'direction' => ['required', Rule::in(['local_to_s3', 's3_to_local'])],
             'keep_source' => ['nullable', 'boolean'],
@@ -810,6 +1439,46 @@ class AdminDashboardController extends Controller
         $normalized = trim($normalized, '_');
 
         return 'SSO_' . $normalized;
+    }
+
+    private function isFeatureEnabledSetting(string $key, bool $default = false): bool
+    {
+        $raw = (string) AdminSetting::getValue($key, $default ? 'true' : 'false');
+
+        return filter_var($raw, FILTER_VALIDATE_BOOL);
+    }
+
+    private function normalizeCronFrequency(string $frequency): string
+    {
+        $normalized = strtolower(trim($frequency));
+
+        return in_array($normalized, ['hourly', 'every_six_hours', 'every_twelve_hours', 'daily', 'weekly', 'monthly'], true) ? $normalized : '';
+    }
+
+    private function cronFrequencyLabel(string $frequency): string
+    {
+        return match ($this->normalizeCronFrequency($frequency)) {
+            'hourly' => 'Every hour',
+            'every_six_hours' => 'Every six hours',
+            'every_twelve_hours' => 'Every 12 hours',
+            'daily' => 'Every day',
+            'weekly' => 'Every week',
+            'monthly' => 'Every month',
+            default => 'Not configured',
+        };
+    }
+
+    private function cronFrequencyExpression(string $frequency): string
+    {
+        return match ($this->normalizeCronFrequency($frequency)) {
+            'hourly' => '0 0 * * * *',
+            'every_six_hours' => '0 0 */6 * * *',
+            'every_twelve_hours' => '0 0 */12 * * *',
+            'daily' => '0 0 0 * * *',
+            'weekly' => '0 0 0 * * 0',
+            'monthly' => '0 0 0 1 * *',
+            default => '* * * * * *',
+        };
     }
 
     private function resolveStorageDisk(): string
@@ -1206,10 +1875,30 @@ class AdminDashboardController extends Controller
 
     private function resolveS3RuntimeCredentials(): array
     {
-        $key = trim((string) config('filesystems.disks.s3.key', $this->getEnvValue('AWS_ACCESS_KEY_ID', '')));
-        $secret = trim((string) config('filesystems.disks.s3.secret', $this->getSecretEnvValue('AWS_SECRET_ACCESS_KEY', '')));
-        $region = trim((string) config('filesystems.disks.s3.region', $this->getEnvValue('AWS_DEFAULT_REGION', '')));
-        $bucket = trim((string) config('filesystems.disks.s3.bucket', $this->getEnvValue('AWS_BUCKET', '')));
+        $storedKey = $this->normalizeSettingValue(AdminSetting::getValue('s3_access_key', ''));
+        $storedSecret = $this->normalizeSettingValue(AdminSetting::getValue('s3_secret_key', ''));
+        $storedRegion = $this->normalizeSettingValue(AdminSetting::getValue('s3_region', ''));
+        $storedBucket = $this->normalizeSettingValue(AdminSetting::getValue('s3_bucket', ''));
+
+        $configKey = $this->normalizeSettingValue(config('filesystems.disks.s3.key', ''));
+        $configSecret = $this->normalizeSettingValue(config('filesystems.disks.s3.secret', ''));
+        $configRegion = $this->normalizeSettingValue(config('filesystems.disks.s3.region', ''));
+        $configBucket = $this->normalizeSettingValue(config('filesystems.disks.s3.bucket', ''));
+
+        $envKey = $this->normalizeSettingValue($this->getEnvValue('AWS_ACCESS_KEY_ID', ''));
+        $envSecret = $this->normalizeSettingValue($this->getSecretEnvValue('AWS_SECRET_ACCESS_KEY', ''));
+        $envRegion = $this->normalizeSettingValue($this->getEnvValue('AWS_DEFAULT_REGION', ''));
+        $envBucket = $this->normalizeSettingValue($this->getEnvValue('AWS_BUCKET', ''));
+
+        $fileKey = $this->normalizeSettingValue($this->getEnvFileValue('AWS_ACCESS_KEY_ID', ''));
+        $fileSecret = $this->normalizeSettingValue($this->decryptSecretFromEnvironment($this->getEnvFileValue('AWS_SECRET_ACCESS_KEY', '')));
+        $fileRegion = $this->normalizeSettingValue($this->getEnvFileValue('AWS_DEFAULT_REGION', ''));
+        $fileBucket = $this->normalizeSettingValue($this->getEnvFileValue('AWS_BUCKET', ''));
+
+        $key = $configKey !== '' ? $configKey : ($envKey !== '' ? $envKey : ($fileKey !== '' ? $fileKey : $storedKey));
+        $secret = $configSecret !== '' ? $configSecret : ($envSecret !== '' ? $envSecret : ($fileSecret !== '' ? $fileSecret : $storedSecret));
+        $region = $configRegion !== '' ? $configRegion : ($envRegion !== '' ? $envRegion : ($fileRegion !== '' ? $fileRegion : $storedRegion));
+        $bucket = $configBucket !== '' ? $configBucket : ($envBucket !== '' ? $envBucket : ($fileBucket !== '' ? $fileBucket : $storedBucket));
 
         return [
             'key' => $key,
@@ -1217,6 +1906,41 @@ class AdminDashboardController extends Controller
             'region' => $region,
             'bucket' => $bucket,
         ];
+    }
+
+    private function getEnvFileValue(string $key, string $default = ''): string
+    {
+        $envPath = base_path('.env');
+        if (!File::exists($envPath)) {
+            return trim($default);
+        }
+
+        $contents = (string) File::get($envPath);
+        $pattern = '/^' . preg_quote($key, '/') . '=(.*)$/m';
+        if (preg_match($pattern, $contents, $matches) !== 1) {
+            return trim($default);
+        }
+
+        $raw = trim((string) ($matches[1] ?? ''));
+        if ($raw === '') {
+            return '';
+        }
+
+        if (str_starts_with($raw, '"') && str_ends_with($raw, '"')) {
+            $raw = trim($raw, '"');
+        }
+
+        return trim($raw);
+    }
+
+    private function normalizeSettingValue(mixed $value): string
+    {
+        $normalized = trim((string) ($value ?? ''));
+        if ($normalized === '' || strtolower($normalized) === 'null') {
+            return '';
+        }
+
+        return $normalized;
     }
 
     private function getEnvValue(string $key, string $default = ''): string
@@ -1241,7 +1965,9 @@ class AdminDashboardController extends Controller
 
     private function isS3Enabled(): bool
     {
-        return filter_var($this->getEnvValue('S3_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+        $envEnabled = filter_var($this->getEnvValue('S3_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+
+        return $this->isFeatureEnabledSetting('s3_enabled', $envEnabled);
     }
 
     private function encryptSecretForEnvironment(string $value): string

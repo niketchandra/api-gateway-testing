@@ -430,7 +430,8 @@ Change system status from active to inactive:
 ```bash
 curl -X POST "http://localhost:8002/system-deregister?systemId=1093719686" \
   -H "Authorization: Bearer <pat_token>" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" \
+  -d '{"pin":"12345"}'
 ```
 
 ## Auth flow diagram (Session + PAT)

@@ -103,6 +103,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the workspaces for this user.
+     */
+    public function workspaces()
+    {
+        return $this->belongsToMany(Workspace::class, 'workspace_user')
+            ->withPivot('is_admin')
+            ->withTimestamps();
+    }
+
+    /**
      * Get the RBAC role for this user.
      */
     public function rbac()

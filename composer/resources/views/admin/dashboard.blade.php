@@ -45,7 +45,13 @@
 
     <div style="display:flex; gap:12px; margin-bottom:24px;">
         <a href="{{ route('admin.users') }}" class="admin-action-btn" style="background:#111111;">Manage Users</a>
+        @if(auth()->check() && in_array((int) auth()->user()->rbac_id, [100, 101], true))
+        <a href="{{ (int) auth()->user()->rbac_id === 100 ? route('enterprise.console') : route('admin.workspaces') }}" class="admin-action-btn" style="background:#374151;">Manage Workspace</a>
+        @endif
+        @if(auth()->check() && (int) auth()->user()->rbac_id === 100)
         <a href="{{ route('admin.settings') }}" class="admin-action-btn" style="background:#111827;">Site Setting</a>
+        <a href="{{ route('enterprise.console') }}" class="admin-action-btn" style="background:#1f2937;">Enterprise Console</a>
+        @endif
     </div>
 </div>
 @endsection

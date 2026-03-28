@@ -16,7 +16,7 @@
                         sans: ['Sora', 'ui-sans-serif', 'system-ui']
                     },
                     boxShadow: {
-                        glow: '0 20px 60px -30px rgba(16, 185, 129, 0.65)'
+                        glow: '0 20px 60px -30px #555555'
                     }
                 }
             }
@@ -52,8 +52,12 @@
                     <p class="mt-1 text-slate-700">{{ $installation['organization_name'] ?? 'Default Organization' }}</p>
                 </div>
                 <div class="rounded-xl border border-cccccc bg-white p-4">
-                    <p class="font-semibold text-slate-800">Domain</p>
-                    <p class="mt-1 text-slate-700">{{ $installation['app_domain'] ?? parse_url(($installation['app_url'] ?? url('/')), PHP_URL_HOST) }}</p>
+                    <p class="font-semibold text-slate-800">IP Address</p>
+                    <p class="mt-1 text-slate-700">{{ $installation['app_ip'] ?? parse_url(($installation['app_url'] ?? url('/')), PHP_URL_HOST) }}</p>
+                </div>
+                <div class="rounded-xl border border-cccccc bg-white p-4">
+                    <p class="font-semibold text-slate-800">Domain Alias</p>
+                    <p class="mt-1 text-slate-700">{{ !empty($installation['app_alias_domain'] ?? '') ? $installation['app_alias_domain'] : 'Not configured' }}</p>
                 </div>
                 <div class="rounded-xl border border-cccccc bg-white p-4">
                     <p class="font-semibold text-slate-800">HTTPS Enabled</p>

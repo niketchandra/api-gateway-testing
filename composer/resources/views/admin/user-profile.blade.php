@@ -92,7 +92,11 @@
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:20px;">
             <div>
                 <h2 style="font-size:22px; color:#111827; margin:0 0 8px 0;">Edit User Profile</h2>
-                <p style="color:#6b7280; margin:0;">Update the user's details, account status, and access role from this page.</p>
+                @if($canEditUserProfile)
+                    <p style="color:#6b7280; margin:0;">Update the user's details, account status, and access role from this page.</p>
+                @else
+                    <p style="color:#6b7280; margin:0;">This profile is read only. Admin users cannot modify another admin profile.</p>
+                @endif
             </div>
         </div>
 
@@ -103,46 +107,76 @@
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
                 <div>
                     <label for="username" style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Username</label>
-                    <input id="username" type="text" name="username" value="{{ old('username', $user->name) }}" required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
+                    <input id="username" type="text" name="username" value="{{ old('username', $user->name) }}" {{ $canEditUserProfile ? '' : 'readonly' }} required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
                 </div>
                 <div>
                     <label for="email" style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Email</label>
-                    <input id="email" type="email" name="email" value="{{ old('email', $user->email) }}" required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
+                    <input id="email" type="email" name="email" value="{{ old('email', $user->email) }}" {{ $canEditUserProfile ? '' : 'readonly' }} required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
                 </div>
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
                 <div>
                     <label for="first_name" style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">First Name</label>
-                    <input id="first_name" type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
+                    <input id="first_name" type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" {{ $canEditUserProfile ? '' : 'readonly' }} style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
                 </div>
                 <div>
                     <label for="last_name" style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Last Name</label>
-                    <input id="last_name" type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
+                    <input id="last_name" type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" {{ $canEditUserProfile ? '' : 'readonly' }} style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px;">
                 </div>
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
                 <div>
                     <label for="status" style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Status</label>
-                    <select id="status" name="status" required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px; background:white;">
+                    <select id="status" name="status" {{ $canEditUserProfile ? '' : 'disabled' }} required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px; background:white;">
                         <option value="active" {{ old('status', $user->status) === 'active' ? 'selected' : '' }}>Active</option>
                         <option value="inactive" {{ old('status', $user->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
+                    @if(!$canEditUserProfile)
+                        <input type="hidden" name="status" value="{{ old('status', $user->status) }}">
+                    @endif
                 </div>
                 <div>
                     <label for="role" style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Role</label>
-                    <select id="role" name="role" required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px; background:white;">
+                    <select id="role" name="role" {{ $canEditUserProfile ? '' : 'disabled' }} required style="width:100%; border:1px solid #b3b3b3; border-radius:8px; padding:10px; background:white;">
                         <option value="user" {{ old('role', in_array((int) $user->rbac_id, [100, 101], true) ? 'admin' : 'user') === 'user' ? 'selected' : '' }}>User</option>
                         <option value="admin" {{ old('role', in_array((int) $user->rbac_id, [100, 101], true) ? 'admin' : 'user') === 'admin' ? 'selected' : '' }}>Admin</option>
                     </select>
+                    @if(!$canEditUserProfile)
+                        <input type="hidden" name="role" value="{{ old('role', in_array((int) $user->rbac_id, [100, 101], true) ? 'admin' : 'user') }}">
+                    @endif
                 </div>
             </div>
 
-            <div style="display:flex; justify-content:flex-end;">
-                <button type="submit" class="user-profile-btn">Save User Profile</button>
-            </div>
+            @if($canEditUserProfile)
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="user-profile-btn">Save User Profile</button>
+                </div>
+            @endif
         </form>
+
+        <div style="margin-top:20px; border-top:1px solid #e5e7eb; padding-top:20px;">
+            <h3 style="font-size:18px; color:#111827; margin:0 0 10px 0;">Workspace Assigned</h3>
+            <p style="color:#6b7280; margin:0 0 12px 0; font-size:13px;">Read only workspace membership for this user.</p>
+
+            @if(($assignedWorkspaces ?? collect())->isEmpty())
+                <div style="padding:12px; background:#f3f4f6; border-radius:8px; color:#6b7280; font-size:13px;">
+                    No workspace assigned.
+                </div>
+            @else
+                <ul style="margin:0; padding-left:18px; color:#111827;">
+                    @foreach($assignedWorkspaces as $assignedWorkspace)
+                        <li style="margin-bottom:6px;">
+                            {{ $assignedWorkspace->name }}
+                            @if((bool) ($assignedWorkspace->pivot->is_admin ?? false))
+                                <span style="font-size:12px; color:#4b5563;">(Workspace Admin)</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
     </div>
 </div>
 @endsection

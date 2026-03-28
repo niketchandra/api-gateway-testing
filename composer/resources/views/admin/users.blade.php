@@ -115,6 +115,19 @@
                     </select>
                 </div>
 
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Workspace</label>
+                    <select name="workspace_id" style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px; background:white;">
+                        <option value="">Use selected header workspace</option>
+                        @foreach(($workspaceSelectorWorkspaces ?? collect()) as $workspaceOption)
+                            <option value="{{ $workspaceOption->id }}" {{ (string) old('workspace_id', $selectedWorkspaceId ?? '') === (string) $workspaceOption->id ? 'selected' : '' }}>
+                                {{ $workspaceOption->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p style="margin-top:6px; font-size:12px; color:#6b7280;">Works for both Admin and User roles.</p>
+                </div>
+
                 <div style="display:flex; gap:10px; justify-content:flex-end;">
                     <button type="button" id="cancelRegisterUserModal" class="admin-user-btn">Cancel</button>
                     <button type="submit" class="admin-user-btn">Create</button>

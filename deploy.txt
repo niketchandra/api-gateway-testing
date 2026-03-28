@@ -5,7 +5,7 @@
 docker compose -f docker-compose.yml -f docker-compose-kong.yml down --volumes --remove-orphans
 
 # 2) Rebuild all images from scratch without cache.
-#    Produces: niketchandra/atglance-api:1.4 and niketchandra/atglance-queue-worker:1.4
+#    Produces: niketchandra/atglance-api:1.5 and niketchandra/atglance-queue-worker:1.5
 docker compose -f docker-compose.yml -f docker-compose-kong.yml build --no-cache
 
 # 2.1) Push tagged build images to Docker Hub.
@@ -19,8 +19,10 @@ docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d --force-re
 # - This flow intentionally does NOT run Laravel migration or seeding commands.
 # - Database starts empty because volumes are removed in step 1.
 
+docker compose -f docker-compose.yml -f docker-compose-kong.yml push api queue-worker
+
+
 rm .\composer\storage\app\installer\installed.json
 docker compose -f docker-compose.yml -f docker-compose-kong.yml down --volumes --remove-orphans
 docker compose -f docker-compose.yml -f docker-compose-kong.yml build --no-cache
-docker compose -f docker-compose.yml -f docker-compose-kong.yml push api queue-worker
 docker compose -f docker-compose.yml -f docker-compose-kong.yml up -d --force-recreate --remove-orphans

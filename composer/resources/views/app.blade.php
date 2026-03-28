@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'AtGlance - Configuration Backup Service')</title>
-    <link rel="icon" type="image/x-icon" href="{{ asset('storage/site-settings/AtGlance-Logo.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ $siteFaviconUrl ?? asset('branding/favicon.ico') }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -315,6 +315,22 @@
             align-items: center;
         }
 
+        .workspace-switcher {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .workspace-switcher select {
+            min-width: 220px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #111827;
+            background: #ffffff;
+        }
+
         .welcome-section {
             padding: 60px 40px;
             text-align: center;
@@ -515,7 +531,7 @@
         <!-- LEFT SIDEBAR (20%) -->
         <div class="sidebar">
             <div class="sidebar-logo">
-                <img src="{{ asset('storage/site-settings/AtGlance-Logo.png') }}" alt="AtGlance Logo" style="max-width: 140px; max-height: 48px; object-fit: contain;">
+                <img src="{{ !empty($siteLogoUrl) ? $siteLogoUrl : asset('branding/atglance-logo.png') }}" alt="AtGlance Logo" style="max-width: 250px; max-height: 100px; object-fit: contain;">
             </div>
 
             <div class="form-container" id="authForm">
@@ -690,9 +706,17 @@
                         <a href="{{ route('admin.users') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
                             <i class="fas fa-users"></i> Manage Users
                         </a>
+                        <a href="{{ (int) auth()->user()->rbac_id === 100 ? route('enterprise.console') : route('admin.workspaces') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-sitemap"></i> Manage Workspace
+                        </a>
+                        @if((int) auth()->user()->rbac_id === 100)
                         <a href="{{ route('admin.settings') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
                             <i class="fas fa-sliders-h"></i> Site Setting
                         </a>
+                        <a href="{{ route('enterprise.console') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-building"></i> Enterprise Console
+                        </a>
+                        @endif
                         <a href="{{ route('systems-registered') }}" class="nav-link" style="padding: 10px; color: #333; text-decoration: none; border-radius: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
                             <i class="fas fa-server"></i> Systems Registered
                         </a>
@@ -730,6 +754,19 @@
                         </div>
                     </div>
                     <div class="header-right">
+                        @if(!empty($workspaceSelectorWorkspaces) && count($workspaceSelectorWorkspaces) > 0)
+                            <form method="POST" action="{{ route('workspace.select') }}" class="workspace-switcher">
+                                @csrf
+                                <label for="workspace_selector" style="font-size:12px; color:#4b5563; font-weight:600; text-transform:uppercase;">Workspace</label>
+                                <select id="workspace_selector" name="workspace_id" onchange="this.form.submit()">
+                                    @foreach($workspaceSelectorWorkspaces as $workspaceOption)
+                                        <option value="{{ $workspaceOption->id }}" {{ (int) ($selectedWorkspaceId ?? 0) === (int) $workspaceOption->id ? 'selected' : '' }}>
+                                            {{ $workspaceOption->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        @endif
                         <span style="color: #333; font-weight: 500;">Hello, {{ auth()->user()->name }}!</span>
                     </div>
                 </div>
