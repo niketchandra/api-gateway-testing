@@ -14,75 +14,75 @@
 
 ### 3.1 Auth
 
-1. POST /auth/register
-2. POST /auth/login
-3. POST /auth/logout
+1. [POST /auth/register](#41-post-authregister)
+2. [POST /auth/login](#42-post-authlogin)
+3. [POST /auth/logout](#43-post-authlogout)
 
 ### 3.2 Token Validation
 
-4. POST /auth/validate-token
-5. GET /auth/validate-token
+4. [POST /auth/validate-token](#44-post-authvalidate-token)
+5. [GET /auth/validate-token](#45-get-authvalidate-token)
 
 ### 3.3 PAT Tokens
 
-6. POST /auth/pat-tokens
-7. GET /auth/pat-tokens
+6. [POST /auth/pat-tokens](#46-post-authpat-tokens)
+7. [GET /auth/pat-tokens](#47-get-authpat-tokens)
 
 ### 3.4 Users
 
-8. GET /users
-9. POST /users
-10. GET /users/{user}
-11. PUT /users/{user}
-12. PATCH /users/{user}
-13. DELETE /users/{user}
+8. [Users Resource](#48-users-resource)
+9. [GET /users](#get-users)
+10. [POST /users](#post-users)
+11. [GET /users/{user}](#get-usersuser)
+12. [PUT/PATCH /users/{user}](#putpatch-usersuser)
+13. [DELETE /users/{user}](#delete-usersuser)
 
 ### 3.5 Products
 
-14. GET /products
-15. POST /products
-16. GET /products/{product}
-17. PUT /products/{product}
-18. PATCH /products/{product}
-19. DELETE /products/{product}
+14. [Products Resource](#49-products-resource)
+15. [GET /products](#get-products)
+16. [POST /products](#post-products)
+17. [GET /products/{product}](#get-productsproduct)
+18. [PUT/PATCH /products/{product}](#putpatch-productsproduct)
+19. [DELETE /products/{product}](#delete-productsproduct)
 
 ### 3.6 File APIs
 
-20. POST /files/upload
-21. GET /files/{fileId}
+20. [POST /files/upload](#410-post-filesupload)
+21. [GET /files/{fileId}](#411-get-filesfileid)
 
 ### 3.7 Config File APIs
 
-22. POST /config-files/upload
-23. GET /config-files
-24. GET /config-files/filter
-25. GET /config-files/{fileId}
-26. GET /config-files/download/{id}
-27. GET /config-files/{fileId}/raw-data
-28. DELETE /config-files/{fileId}
+22. [POST /config-files/upload](#412-post-config-filesupload)
+23. [GET /config-files](#413-get-config-files)
+24. [GET /config-files/filter](#414-get-config-filesfilter)
+25. [GET /config-files/{fileId}](#415-get-config-filesfileid)
+26. [GET /config-files/download/{id}](#416-get-config-filesdownloadid)
+27. [GET /config-files/{fileId}/raw-data](#417-get-config-filesfileidraw-data)
+28. [DELETE /config-files/{fileId}](#418-delete-config-filesfileid)
 
 ### 3.8 Service APIs
 
-29. POST /services
-30. GET /services
-31. GET /services/{serviceId}
+29. [POST /services](#419-post-services)
+30. [GET /services](#420-get-services)
+31. [GET /services/{serviceId}](#421-get-servicesserviceid)
 
 ### 3.9 System Register APIs
 
-32. POST /system-register
-33. GET /system-register
-34. GET /system-register/pat/{patTokenId}
-35. GET /system-register/user/{userId}
+32. [POST /system-register](#422-post-system-register)
+33. [GET /system-register](#423-get-system-register)
+34. [GET /system-register/pat/{patTokenId}](#424-get-system-registerpatpattokenid)
+35. [GET /system-register/user/{userId}](#425-get-system-registeruseruserid)
 
 ### 3.10 System State APIs
 
-36. POST /system-deregister
-37. POST /system-reactive
-38. GET /system-reactive
-39. POST /system-deregister-force
-40. GET /system-deregister-force
-41. POST /system-reactivate-force
-42. GET /system-reactivate-force
+36. [POST /system-deregister](#426-post-system-deregister)
+37. [POST /system-reactive](#427-post-system-reactive)
+38. [GET /system-reactive](#428-get-system-reactive)
+39. [POST /system-deregister-force](#429-post-system-deregister-force)
+40. [GET /system-deregister-force](#430-get-system-deregister-force)
+41. [POST /system-reactivate-force](#431-post-system-reactivate-force)
+42. [GET /system-reactivate-force](#432-get-system-reactivate-force)
 
 ---
 
