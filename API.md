@@ -498,8 +498,10 @@ curl -X GET "http://localhost:8002/system-register/user/1" \
 ### 4.26 POST /system-deregister
 
 Variables:
-- systemId or system_id (required by behavior)
-- password or pin (at least one required)
+- systemId (optional alias, required if system_id is not sent)
+- system_id (optional alias, required if systemId is not sent)
+- password (optional, required if pin is not sent)
+- pin (optional, required if password is not sent)
 
 ```bash
 curl -X POST "http://localhost:8002/system-deregister" \
@@ -514,8 +516,10 @@ curl -X POST "http://localhost:8002/system-deregister" \
 ### 4.27 POST /system-reactive
 
 Variables:
-- systemId or system_id
-- password or pin
+- systemId (optional alias, required if system_id is not sent)
+- system_id (optional alias, required if systemId is not sent)
+- password (optional, required if pin is not sent)
+- pin (optional, required if password is not sent)
 
 ```bash
 curl -X POST "http://localhost:8002/system-reactive" \
@@ -540,8 +544,10 @@ Headers:
 - Authorization: Bearer SESSION_TOKEN
 
 Variables:
-- systemId or system_id
-- password or pin
+- systemId (optional alias, required if system_id is not sent)
+- system_id (optional alias, required if systemId is not sent)
+- password (optional, required if pin is not sent)
+- pin (optional, required if password is not sent)
 
 ```bash
 curl -X POST "http://localhost:8002/system-deregister-force" \
@@ -566,8 +572,10 @@ Headers:
 - Authorization: Bearer SESSION_TOKEN
 
 Variables:
-- systemId or system_id
-- password or pin
+- systemId (optional alias, required if system_id is not sent)
+- system_id (optional alias, required if systemId is not sent)
+- password (optional, required if pin is not sent)
+- pin (optional, required if password is not sent)
 
 ```bash
 curl -X POST "http://localhost:8002/system-reactivate-force" \
