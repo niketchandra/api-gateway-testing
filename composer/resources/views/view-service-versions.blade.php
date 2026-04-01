@@ -55,7 +55,7 @@
                                 </div>
                                 <div>
                                     <div style="font-size: 10px; color: rgba(255,255,255,0.8); font-weight: 500;">VERSION</div>
-                                    <div style="font-size: 20px; color: white; font-weight: bold;">{{ $version->version ?? 'N/A' }}</div>
+                                    <div style="font-size: 20px; color: white; font-weight: bold;">{{ $version->display_version ?? $version->version ?? 'N/A' }}</div>
                                 </div>
                             </div>
                             <div style="background: {{ $isActive ? 'rgba(76, 175, 80, 0.95)' : 'rgba(244, 67, 54, 0.95)' }}; padding: 5px 12px; border-radius: 16px; font-size: 10px; color: white; font-weight: 600; text-transform: uppercase;">

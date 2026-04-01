@@ -431,6 +431,7 @@ class AdminDashboardController extends Controller
         $workspaceAddUserRouteName = $isSuperAdmin ? 'workspace.users.add' : 'admin.workspaces.users.add';
         $workspaceRemoveUserRouteName = $isSuperAdmin ? 'workspace.users.remove' : 'admin.workspaces.users.remove';
         $workspaceUpdateRouteName = $isSuperAdmin ? 'workspace.update' : null;
+        $workspaceDeleteRouteName = $isSuperAdmin ? 'workspace.destroy' : null;
 
         return view('admin.workspace-detail', [
             'workspace' => $workspace,
@@ -443,6 +444,7 @@ class AdminDashboardController extends Controller
             'canManageAdmins' => $isSuperAdmin,
             'workspaceShowRouteName' => $workspaceShowRouteName,
             'workspaceUpdateRouteName' => $workspaceUpdateRouteName,
+            'workspaceDeleteRouteName' => $workspaceDeleteRouteName,
             'workspaceAddUserRouteName' => $workspaceAddUserRouteName,
             'workspaceRemoveUserRouteName' => $workspaceRemoveUserRouteName,
         ]);
@@ -468,6 +470,22 @@ class AdminDashboardController extends Controller
         return redirect()
             ->route('workspace.detail', $workspaceId)
             ->with('success', 'Workspace updated successfully.');
+    }
+
+    public function deleteWorkspace(int $workspaceId): RedirectResponse
+    {
+        $actor = Auth::user();
+        if (!$this->isSuperAdmin($actor)) {
+            abort(403);
+        }
+
+        $workspace = Workspace::findOrFail($workspaceId);
+        $workspaceName = $workspace->name;
+        $workspace->delete();
+
+        return redirect()
+            ->route('enterprise.console')
+            ->with('success', "Workspace '{$workspaceName}' deleted successfully.");
     }
 
     public function addAdminToWorkspace(Request $request, int $workspaceId): RedirectResponse

@@ -48,6 +48,7 @@ Route::middleware('app.installed')->group(function () {
         Route::get('/configuration-backups/{id}/view', [DashboardController::class, 'viewConfigurationFile'])->name('configuration-backups.view');
         Route::get('/configuration-backups/{id}/download', [DashboardController::class, 'downloadConfigurationFile'])->name('configuration-backups.download');
         Route::get('/systems-registered', [DashboardController::class, 'systemsRegistered'])->name('systems-registered');
+        Route::delete('/systems-registered/{systemId}', [DashboardController::class, 'deleteRegisteredSystem'])->name('systems-registered.delete');
         Route::get('/systems-registered/{systemId}/services', [DashboardController::class, 'systemServices'])->name('systems-registered.services');
         Route::get('/live-service-monitoring', [DashboardController::class, 'liveServiceMonitoring'])->name('live-service-monitoring');
         Route::get('/vulnerabilities-identified', [DashboardController::class, 'vulnerabilitiesIdentified'])->name('vulnerabilities-identified');
@@ -93,6 +94,7 @@ Route::middleware('app.installed')->group(function () {
             Route::post('/entrpirse_console/organizations', [AdminDashboardController::class, 'createEnterpriseOrganization'])->name('enterprise.organizations.store');
             Route::get('/workspace/{workspaceId}', [AdminDashboardController::class, 'viewWorkspace'])->name('workspace.detail');
             Route::put('/workspace/{workspaceId}', [AdminDashboardController::class, 'updateWorkspace'])->name('workspace.update');
+            Route::delete('/workspace/{workspaceId}', [AdminDashboardController::class, 'deleteWorkspace'])->name('workspace.destroy');
             Route::post('/workspace/{workspaceId}/admins', [AdminDashboardController::class, 'addAdminToWorkspace'])->name('workspace.admins.add');
             Route::post('/workspace/{workspaceId}/users', [AdminDashboardController::class, 'addUserToWorkspace'])->name('workspace.users.add');
             Route::delete('/workspace/{workspaceId}/users/{userId}', [AdminDashboardController::class, 'removeUserFromWorkspace'])->name('workspace.users.remove');

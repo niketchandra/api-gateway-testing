@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SystemRegister;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,8 @@ class DashboardController extends Controller
 
         $isAllowed = false;
         if ($userRole === 100) {
-            $isAllowed = (int) $workspace->org_id === (int) ($user->org_id ?? 200);
+            $isAllowed = (int) $workspace->org_id === (int) ($user->org_id ?? 200)
+                && (string) ($workspace->status ?? '') === 'active';
         } else {
             $isAllowed = $user->workspaces()->where('workspaces.id', $workspaceId)->exists();
         }
@@ -208,6 +210,37 @@ class DashboardController extends Controller
         return view('systems-registered', compact('items'));
     }
 
+    public function deleteRegisteredSystem(int $systemId): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = Auth::user();
+        if (!in_array((int) ($actor->rbac_id ?? 0), [100, 101], true)) {
+            abort(403);
+        }
+
+        $system = SystemRegister::findOrFail($systemId);
+
+        // Admin can delete systems within their own org. Super admin can delete globally.
+        if ((int) ($actor->rbac_id ?? 0) === 101 && (int) ($system->org_id ?? 0) !== (int) ($actor->org_id ?? 0)) {
+            abort(403);
+        }
+
+        DB::table('configuration_files')
+            ->where('system_register_id', $system->id)
+            ->update(['system_register_id' => null]);
+
+        DB::table('raw_data')
+            ->where('system_register_id', $system->id)
+            ->update(['system_register_id' => null]);
+
+        $systemName = (string) ($system->system_name ?? $system->id);
+        $system->delete();
+
+        return redirect()
+            ->route('systems-registered')
+            ->with('success', "System '{$systemName}' deleted successfully.");
+    }
+
     /**
      * List all services for a specific registered system
      */
@@ -302,6 +335,8 @@ class DashboardController extends Controller
             abort(404, 'No configuration files found for this service');
         }
 
+        $versions = $this->applyDisplayVersionFallback($versions);
+
         $serviceName = $service->service_name;
         $systemId = $service->system_id;
 
@@ -338,6 +373,8 @@ class DashboardController extends Controller
         if ($versions->isEmpty()) {
             abort(404, 'No configuration files found for this service');
         }
+
+        $versions = $this->applyDisplayVersionFallback($versions);
 
         $systemId = $versions->first()->system_register_id;
 
@@ -499,20 +536,44 @@ class DashboardController extends Controller
     public function viewApiKey(Request $request)
     {
         $validated = $request->validate([
-            'password' => 'required|string',
+            'password' => 'nullable|string',
+            'pin' => 'nullable|string',
             'key_id' => 'required|integer',
         ]);
+
+        // Require at least one authentication method
+        if (empty($validated['password']) && empty($validated['pin'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password or PIN is required',
+            ], 400);
+        }
 
         /** @var User $user */
         $user = Auth::user();
 
-        $userPasswordHash = $user->password_hash ?? $user->password;
+        $authenticated = false;
 
-        // Verify password
-        if (!$userPasswordHash || !Hash::check($validated['password'], $userPasswordHash)) {
+        // Verify password if provided
+        if (!empty($validated['password'])) {
+            $userPasswordHash = $user->password_hash ?? $user->password;
+            if ($userPasswordHash && Hash::check($validated['password'], $userPasswordHash)) {
+                $authenticated = true;
+            }
+        }
+
+        // Verify PIN if provided and password didn't authenticate
+        if (!$authenticated && !empty($validated['pin'])) {
+            $userPinHash = $user->pin;
+            if ($userPinHash && Hash::check($validated['pin'], $userPinHash)) {
+                $authenticated = true;
+            }
+        }
+
+        if (!$authenticated) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid password',
+                'message' => 'Invalid password or PIN',
             ], 401);
         }
 
@@ -556,20 +617,44 @@ class DashboardController extends Controller
     public function revokeApiKey(Request $request)
     {
         $validated = $request->validate([
-            'password' => 'required|string',
+            'password' => 'nullable|string',
+            'pin' => 'nullable|string',
             'key_id' => 'required|integer',
         ]);
+
+        // Require at least one authentication method
+        if (empty($validated['password']) && empty($validated['pin'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password or PIN is required',
+            ], 400);
+        }
 
         /** @var User $user */
         $user = Auth::user();
 
-        $userPasswordHash = $user->password_hash ?? $user->password;
+        $authenticated = false;
 
-        // Verify password
-        if (!$userPasswordHash || !Hash::check($validated['password'], $userPasswordHash)) {
+        // Verify password if provided
+        if (!empty($validated['password'])) {
+            $userPasswordHash = $user->password_hash ?? $user->password;
+            if ($userPasswordHash && Hash::check($validated['password'], $userPasswordHash)) {
+                $authenticated = true;
+            }
+        }
+
+        // Verify PIN if provided and password didn't authenticate
+        if (!$authenticated && !empty($validated['pin'])) {
+            $userPinHash = $user->pin;
+            if ($userPinHash && Hash::check($validated['pin'], $userPinHash)) {
+                $authenticated = true;
+            }
+        }
+
+        if (!$authenticated) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid password',
+                'message' => 'Invalid password or PIN',
             ], 401);
         }
 
@@ -779,5 +864,39 @@ class DashboardController extends Controller
         }
 
         return ['local', ltrim($storedLocation, '/')];
+    }
+
+    private function applyDisplayVersionFallback($versions)
+    {
+        $counts = $versions
+            ->map(function ($item) {
+                $label = strtolower(trim((string) ($item->version ?? '')));
+
+                return $label;
+            })
+            ->filter(fn ($label) => $label !== '')
+            ->countBy();
+
+        $sequenceMap = $versions
+            ->sortBy(function ($item) {
+                return [$item->created_at ?? null, $item->id ?? 0];
+            })
+            ->values()
+            ->mapWithKeys(function ($item, $index) {
+                return [(int) $item->id => 'v' . ($index + 1)];
+            });
+
+        return $versions->map(function ($item) use ($counts, $sequenceMap) {
+            $original = trim((string) ($item->version ?? ''));
+            $normalized = strtolower($original);
+            $hasDuplicate = $normalized !== '' && (($counts[$normalized] ?? 0) > 1);
+            $needsFallback = $original === '' || $hasDuplicate;
+
+            $item->display_version = $needsFallback
+                ? ($sequenceMap[(int) $item->id] ?? 'N/A')
+                : $original;
+
+            return $item;
+        });
     }
 }

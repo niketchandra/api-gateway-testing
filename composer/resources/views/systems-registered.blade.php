@@ -4,6 +4,12 @@
 
 @section('dashboard-content')
 <div style="padding: 40px;">
+    @if(session('success'))
+        <div style="padding:12px; border-radius:8px; background:#dcfce7; color:#166534; margin-bottom:16px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div style="margin-bottom: 30px;">
         <h1 style="font-size: 28px; font-weight: bold; color: #333; margin-bottom: 8px;">Systems Registered</h1>
         <p style="color: #666; font-size: 14px;">Manage and monitor your registered systems</p>
@@ -100,8 +106,21 @@
                                     <div style="font-size: 18px; color: white; font-weight: bold;">#{{ $item->id }}</div>
                                 </div>
                             </div>
-                            <div style="background: {{ $isActive ? 'rgba(76, 175, 80, 0.95)' : 'rgba(244, 67, 54, 0.95)' }}; padding: 6px 14px; border-radius: 20px; font-size: 11px; color: white; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                                {{ ucfirst($item->status) }}
+                            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                                <div style="background: {{ $isActive ? 'rgba(76, 175, 80, 0.95)' : 'rgba(244, 67, 54, 0.95)' }}; padding: 6px 14px; border-radius: 20px; font-size: 11px; color: white; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    {{ ucfirst($item->status) }}
+                                </div>
+                                @if(in_array((int) (auth()->user()->rbac_id ?? 0), [100, 101], true))
+                                    <form method="POST" action="{{ route('systems-registered.delete', ['systemId' => $item->id]) }}" style="margin:0;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                onclick="return confirm('Delete this registered system? This will remove its services as well.');"
+                                                style="background:#991b1b; color:white; border:none; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:600; cursor:pointer;">
+                                            Delete
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
                     </div>

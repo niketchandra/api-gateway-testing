@@ -139,6 +139,7 @@ class AppServiceProvider extends ServiceProvider
                     if ((int) ($user->rbac_id ?? 0) === 100) {
                         $workspaceSelectorWorkspaces = Workspace::query()
                             ->where('org_id', (int) ($user->org_id ?? 200))
+                            ->where('status', 'active')
                             ->orderBy('name')
                             ->get(['id', 'name']);
                     } else {

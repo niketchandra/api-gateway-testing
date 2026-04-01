@@ -28,7 +28,14 @@
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px;">
         @if($canEditWorkspaceMetadata)
         <div style="background:white; border:1px solid #e5e7eb; border-radius:10px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,0.06);">
-            <h2 style="font-size:18px; color:#111827; margin-bottom:8px;">Edit Workspace</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;">
+                <h2 style="font-size:18px; color:#111827; margin:0;">Edit Workspace</h2>
+                <form method="POST" action="{{ route($workspaceDeleteRouteName, $workspace->id) }}" style="margin:0;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" onclick="return confirm('Delete this workspace? This action cannot be undone.');" style="background:#dc2626; color:white; border:none; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer;">Delete Workspace</button>
+                </form>
+            </div>
             <p style="font-size:13px; color:#6b7280; margin-bottom:14px;">Update workspace name, description, and status.</p>
 
             <form method="POST" action="{{ route($workspaceUpdateRouteName, $workspace->id) }}">

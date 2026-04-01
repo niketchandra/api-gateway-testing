@@ -619,24 +619,39 @@
         </div>
     </div>
 
-    <!-- PASSWORD CONFIRMATION MODAL -->
+    <!-- AUTHENTICATION CONFIRMATION MODAL -->
     <div id="passwordModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1001; align-items: center; justify-content: center;">
         <div style="background: white; border-radius: 10px; padding: 30px; width: 90%; max-width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 id="passwordModalTitle" style="font-size: 20px; font-weight: bold; margin: 0;">Confirm Password</h2>
+                <h2 id="passwordModalTitle" style="font-size: 20px; font-weight: bold; margin: 0;">Confirm Authentication</h2>
                 <button type="button" onclick="closePasswordModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">&times;</button>
             </div>
 
-            <p id="passwordModalDesc" style="color: #666; margin-bottom: 20px;">Enter your password to continue.</p>
+            <p id="passwordModalDesc" style="color: #666; margin-bottom: 20px;">Enter your password or PIN to continue.</p>
 
             <form id="passwordForm" onsubmit="handlePasswordSubmit(event)">
                 @csrf
                 <input type="hidden" id="passwordAction" name="action" value="">
                 <input type="hidden" id="passwordKeyId" name="key_id" value="">
 
-                <div class="settings-form-group">
+                <!-- Authentication Type Selector -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;">
+                    <button type="button" style="border: none; background: none; padding: 10px 15px; cursor: pointer; font-weight: 600; color: #111827; border-bottom: 2px solid #111827;" id="authTypePasswordBtn" onclick="switchAuthType('password')">Password</button>
+                    <button type="button" style="border: none; background: none; padding: 10px 15px; cursor: pointer; font-weight: 600; color: #999;" id="authTypePinBtn" onclick="switchAuthType('pin')">PIN</button>
+                </div>
+
+                <!-- Password Input -->
+                <div id="passwordAuthGroup" class="settings-form-group">
                     <label for="api_key_password">Password</label>
-                    <input type="password" id="api_key_password" name="password" placeholder="Enter your password" required autofocus>
+                    <input type="password" id="api_key_password" name="password" placeholder="Enter your password" autofocus>
+                </div>
+
+                <!-- PIN Input (5 independent boxes) -->
+                <div id="pinAuthGroup" style="display: none;" class="settings-form-group">
+                    <label>Enter your 5-digit PIN</label>
+                    <div class="pin-row" data-target="api_key_pin_input"></div>
+                    <input type="hidden" name="pin" id="api_key_pin_input" value="">
+                    <div class="pin-help-text">Enter exactly 5 digits</div>
                 </div>
 
                 <div id="viewKeyContent" style="display: none; margin-top: 15px; margin-bottom: 20px;">
@@ -717,8 +732,8 @@
 
         const modalTitle = action === 'view' ? 'View API Key' : 'Revoke API Key';
         const modalDesc = action === 'view' 
-            ? 'Enter your password to view this API key.'
-            : 'Enter your password to revoke this API key. This action cannot be undone.';
+            ? 'Enter your password or PIN to view this API key.'
+            : 'Enter your password or PIN to revoke this API key. This action cannot be undone.';
         const btnText = action === 'view' ? 'View Key' : 'Revoke Key';
         const btnClass = action === 'view' ? 'btn-save' : 'btn-secondary';
         const btnStyle = action === 'view' ? '' : 'background: #f8d7da; color: #721c24;';
@@ -732,13 +747,24 @@
         document.getElementById('passwordAction').value = action;
         document.getElementById('passwordKeyId').value = keyId;
         document.getElementById('api_key_password').value = '';
-        document.getElementById('api_key_password').focus();
+        document.getElementById('api_key_pin_input').value = '';
+        
+        // Clear PIN boxes
+        document.querySelectorAll('[data-target="api_key_pin_input"] .pin-box').forEach(box => {
+            box.value = '';
+        });
+        
+        // Reset to password tab
+        switchAuthType('password');
+        
         document.getElementById('passwordModal').style.display = 'flex';
     }
 
     function closePasswordModal() {
         document.getElementById('passwordModal').style.display = 'none';
         document.getElementById('passwordForm').reset();
+        // Reset to password tab
+        switchAuthType('password');
     }
 
     function handleCreateKeySubmit(event) {
@@ -827,9 +853,21 @@
         const action = document.getElementById('passwordAction').value;
         const keyId = document.getElementById('passwordKeyId').value;
         const password = document.getElementById('api_key_password').value;
+        const pin = document.getElementById('api_key_pin_input').value;
+
+        // Validate at least one is filled
+        if (!password && !pin) {
+            alert('Please enter your password or PIN');
+            return;
+        }
 
         const data = new FormData();
-        data.append('password', password);
+        if (password) {
+            data.append('password', password);
+        }
+        if (pin) {
+            data.append('pin', pin);
+        }
         data.append('key_id', keyId);
         data.append('_token', document.querySelector('[name="_token"]').value);
 
@@ -855,10 +893,96 @@
                     }
                 }
             } else {
-                alert('Error: ' + (data.message || 'Invalid password'));
+                alert('Error: ' + (data.message || 'Invalid password or PIN'));
             }
         })
         .catch(error => console.error('Error:', error));
+    }
+
+    function switchAuthType(type) {
+        const passwordGroup = document.getElementById('passwordAuthGroup');
+        const pinGroup = document.getElementById('pinAuthGroup');
+        const passwordBtn = document.getElementById('authTypePasswordBtn');
+        const pinBtn = document.getElementById('authTypePinBtn');
+
+        if (type === 'password') {
+            passwordGroup.style.display = 'block';
+            pinGroup.style.display = 'none';
+            passwordBtn.style.cssText = 'border: none; background: none; padding: 10px 15px; cursor: pointer; font-weight: 600; color: #111827; border-bottom: 2px solid #111827;';
+            pinBtn.style.cssText = 'border: none; background: none; padding: 10px 15px; cursor: pointer; font-weight: 600; color: #999;';
+            document.getElementById('api_key_password').focus();
+            // Clear PIN field
+            document.getElementById('api_key_pin_input').value = '';
+            document.querySelectorAll('[data-target="api_key_pin_input"] .pin-box').forEach(box => {
+                box.value = '';
+            });
+        } else {
+            passwordGroup.style.display = 'none';
+            pinGroup.style.display = 'block';
+            passwordBtn.style.cssText = 'border: none; background: none; padding: 10px 15px; cursor: pointer; font-weight: 600; color: #999;';
+            pinBtn.style.cssText = 'border: none; background: none; padding: 10px 15px; cursor: pointer; font-weight: 600; color: #111827; border-bottom: 2px solid #111827;';
+            const firstBox = document.querySelector('[data-target="api_key_pin_input"] .pin-box');
+            if (firstBox) {
+                firstBox.focus();
+            }
+            // Clear password field
+            document.getElementById('api_key_password').value = '';
+        }
+    }
+
+    // Initialize PIN boxes for API key authentication
+    document.addEventListener('DOMContentLoaded', function () {
+        const row = document.querySelector('[data-target="api_key_pin_input"]');
+        if (!row) return;
+
+        const hiddenInput = document.getElementById('api_key_pin_input');
+        if (!hiddenInput) return;
+
+        for (let i = 0; i < 5; i++) {
+            const input = document.createElement('input');
+            input.type = 'password';
+            input.inputMode = 'numeric';
+            input.maxLength = 1;
+            input.className = 'pin-box';
+            input.autocomplete = 'off';
+
+            input.addEventListener('paste', function (event) {
+                event.preventDefault();
+                const pasted = (event.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 5);
+                const boxes = row.querySelectorAll('.pin-box');
+                pasted.split('').forEach((digit, index) => {
+                    if (boxes[index]) {
+                        boxes[index].value = digit;
+                    }
+                });
+                syncApiKeyPin(row, hiddenInput);
+                const nextIndex = Math.min(pasted.length, 4);
+                if (boxes[nextIndex]) {
+                    boxes[nextIndex].focus();
+                }
+            });
+
+            input.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '').slice(0, 1);
+                syncApiKeyPin(row, hiddenInput);
+
+                if (this.value && this.nextElementSibling) {
+                    this.nextElementSibling.focus();
+                }
+            });
+
+            input.addEventListener('keydown', function (event) {
+                if (event.key === 'Backspace' && !this.value && this.previousElementSibling) {
+                    this.previousElementSibling.focus();
+                }
+            });
+
+            row.appendChild(input);
+        }
+    });
+
+    function syncApiKeyPin(row, hiddenInput) {
+        hiddenInput.value = Array.from(row.querySelectorAll('.pin-box')).map((box) => box.value).join('');
     }
 
     function closeNewTokenAlert() {

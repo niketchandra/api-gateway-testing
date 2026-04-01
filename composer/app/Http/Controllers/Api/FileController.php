@@ -130,8 +130,10 @@ class FileController extends Controller
             $service->system_hash = $request->input('validation_hash');
             $service->save();
         }
+
+        $resolvedVersion = $this->resolveNextVersionLabel((int) $service->service_id);
         
-        $configFile = DB::transaction(function () use ($user, $systemId, $service, $originalName, $serviceName, $filePath, $storageDisk, $request, $fileContent) {
+        $configFile = DB::transaction(function () use ($user, $systemId, $service, $originalName, $serviceName, $filePath, $storageDisk, $request, $fileContent, $resolvedVersion) {
             $payload = [
                 'user_id' => $user->id,
                 'system_register_id' => $systemId,
@@ -140,7 +142,7 @@ class FileController extends Controller
                 'service_name' => $serviceName,
                 'file_location' => $filePath,
                 'validation_hash' => $request->input('validation_hash'),
-                'version' => $request->input('version'),
+                'version' => $resolvedVersion,
             ];
 
             if ($this->hasStorageDiskColumn()) {
@@ -158,7 +160,7 @@ class FileController extends Controller
                 'service_name' => $serviceName,
                 'file_data' => $fileContent,
                 'validation_hash' => $request->input('validation_hash'),
-                'version' => $request->input('version'),
+                'version' => $resolvedVersion,
             ]);
 
             return $configFile;
@@ -621,6 +623,27 @@ class FileController extends Controller
         $hasColumn = Schema::hasColumn('configuration_files', 'storage_disk');
 
         return $hasColumn;
+    }
+
+    private function resolveNextVersionLabel(int $serviceId): string
+    {
+        $existingVersions = ConfigurationFile::query()
+            ->where('service_id', $serviceId)
+            ->pluck('version')
+            ->filter(fn ($version) => is_string($version) && trim($version) !== '')
+            ->values();
+
+        $maxVersionNumber = 0;
+
+        foreach ($existingVersions as $versionLabel) {
+            $label = strtolower(trim((string) $versionLabel));
+
+            if (preg_match('/^v?(\d+)$/', $label, $matches)) {
+                $maxVersionNumber = max($maxVersionNumber, (int) $matches[1]);
+            }
+        }
+
+        return 'v' . ($maxVersionNumber + 1);
     }
 
     private function resolveLegacyDiskAndPath(?string $storageDisk, string $storedLocation): array
