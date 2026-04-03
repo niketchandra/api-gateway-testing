@@ -56,10 +56,10 @@ Route::post('/system-deregister', [SystemRegisterController::class, 'deregister'
 Route::post('/system-reactive', [SystemRegisterController::class, 'reactive'])->middleware('auth.pat');
 Route::get('/system-reactive', [SystemRegisterController::class, 'reactive'])->middleware('auth.pat');
 
-// Force system deregistration - requires session token (bearer token) - ADMIN API
-Route::post('/system-deregister-force', [SystemRegisterController::class, 'deregisterForce'])->middleware('auth.session');
-Route::get('/system-deregister-force', [SystemRegisterController::class, 'deregisterForce'])->middleware('auth.session');
+// Force system deregistration - no bearer token required; uses email + password/pin
+Route::post('/system-deregister-force', [SystemRegisterController::class, 'deregisterForce']);
+Route::get('/system-deregister-force', [SystemRegisterController::class, 'deregisterForce']);
 
-// Force system reactivation - requires session token (bearer token) - ADMIN API
-Route::post('/system-reactivate-force', [SystemRegisterController::class, 'reactiveForce'])->middleware('auth.session');
-Route::get('/system-reactivate-force', [SystemRegisterController::class, 'reactiveForce'])->middleware('auth.session');
+// Force system reactivation - no bearer token required; uses email + password/pin
+Route::post('/system-reactivate-force', [SystemRegisterController::class, 'reactiveForce']);
+Route::get('/system-reactivate-force', [SystemRegisterController::class, 'reactiveForce']);

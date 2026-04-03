@@ -127,7 +127,7 @@ services:
 
   api:
     build: .
-    image: niketchandra/atglance-api:1.4
+    image: niketchandra/atglance-api:1.6
     command:
       - sh
       - -lc
@@ -151,7 +151,7 @@ services:
 
   queue-worker:
     build: .
-    image: niketchandra/atglance-queue-worker:1.4
+    image: niketchandra/atglance-queue-worker:1.6
     working_dir: /app
     command:
       - sh

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\AdminSetting;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
@@ -126,6 +127,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('*', function ($view) {
             $workspaceSelectorWorkspaces = collect();
+            $workspaceSelectorOptions = collect();
             $selectedWorkspaceId = null;
 
             try {
@@ -148,16 +150,45 @@ class AppServiceProvider extends ServiceProvider
                             ->get(['workspaces.id', 'workspaces.name']);
                     }
 
-                    $allowedWorkspaceIds = $workspaceSelectorWorkspaces
+                    $workspaceSelectorOptions = $workspaceSelectorWorkspaces->values();
+
+                    $hasUnassignedSystems = false;
+                    if (Schema::hasTable('system_register')) {
+                        $hasUnassignedSystems = DB::table('system_register')
+                            ->where('user_id', (int) $user->id)
+                            ->where(function ($query) {
+                                $query->where('workspace_id', 0)
+                                    ->orWhereNull('workspace_id');
+                            })
+                            ->exists();
+                    }
+
+                    if ($hasUnassignedSystems) {
+                        $workspaceSelectorOptions = $workspaceSelectorOptions->concat([
+                            (object) [
+                                'id' => 0,
+                                'name' => 'Unassigned',
+                            ],
+                        ]);
+                    }
+
+                    $allowedWorkspaceIds = $workspaceSelectorOptions
                         ->pluck('id')
                         ->map(fn ($id) => (int) $id)
                         ->all();
 
-                    $selectedWorkspaceId = (int) session('selected_workspace_id', 0);
+                    $selectedWorkspaceId = session()->has('selected_workspace_id')
+                        ? (int) session('selected_workspace_id')
+                        : null;
 
                     if (!empty($allowedWorkspaceIds)) {
                         if (!in_array($selectedWorkspaceId, $allowedWorkspaceIds, true)) {
-                            $selectedWorkspaceId = $allowedWorkspaceIds[0];
+                            $preferredWorkspaceIds = array_values(array_filter(
+                                $allowedWorkspaceIds,
+                                fn (int $workspaceId): bool => $workspaceId !== 0
+                            ));
+
+                            $selectedWorkspaceId = $preferredWorkspaceIds[0] ?? $allowedWorkspaceIds[0];
                             session(['selected_workspace_id' => $selectedWorkspaceId]);
                         }
                     } else {
@@ -167,10 +198,12 @@ class AppServiceProvider extends ServiceProvider
                 }
             } catch (\Throwable $e) {
                 $workspaceSelectorWorkspaces = collect();
+                $workspaceSelectorOptions = collect();
                 $selectedWorkspaceId = null;
             }
 
             $view->with('workspaceSelectorWorkspaces', $workspaceSelectorWorkspaces);
+            $view->with('workspaceSelectorOptions', $workspaceSelectorOptions);
             $view->with('selectedWorkspaceId', $selectedWorkspaceId);
         });
     }

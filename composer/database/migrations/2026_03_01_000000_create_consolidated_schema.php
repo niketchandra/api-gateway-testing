@@ -134,20 +134,53 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
 
+        Schema::create('workspaces', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('org_id');
+            $table->string('name', 255);
+            $table->string('description', 512)->nullable();
+            $table->string('status', 20)->default('active');
+            $table->timestamps();
+
+            $table->foreign('org_id')->references('id')->on('organizations')->cascadeOnDelete();
+            $table->index(['org_id', 'status']);
+        });
+
+        Schema::create('workspace_user', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('workspace_id');
+            $table->unsignedBigInteger('user_id');
+            $table->boolean('is_admin')->default(false);
+            $table->timestamps();
+
+            $table->foreign('workspace_id')->references('id')->on('workspaces')->cascadeOnDelete();
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            $table->unique(['workspace_id', 'user_id']);
+            $table->index(['workspace_id', 'is_admin']);
+        });
+
         Schema::create('system_register', function (Blueprint $table) {
             $table->unsignedBigInteger('id')->primary();
             $table->unsignedBigInteger('pat_token_id');
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('org_id')->nullable();
+            $table->unsignedBigInteger('workspace_id')->default(0);
             $table->string('system_name', 255);
             $table->string('os_type', 100);
             $table->string('ip_address', 45);
+            $table->string('public_ip', 45)->nullable();
+            $table->boolean('public_facing')->default(false);
+            $table->text('description')->nullable();
+            $table->string('distro', 100)->nullable();
+            $table->string('version', 100)->nullable();
+            $table->boolean('is_locked')->default(false);
             $table->string('tags', 512)->nullable();
             $table->longText('metadata')->nullable();
             $table->string('status', 20)->default('active');
             $table->string('validation_hash', 255)->nullable();
             $table->timestamps();
             $table->index(['pat_token_id', 'user_id']);
+            $table->index('workspace_id');
         });
 
         Schema::create('services', function (Blueprint $table) {
@@ -283,6 +316,8 @@ return new class extends Migration
         Schema::dropIfExists('configuration_files');
         Schema::dropIfExists('services');
         Schema::dropIfExists('system_register');
+        Schema::dropIfExists('workspace_user');
+        Schema::dropIfExists('workspaces');
         Schema::dropIfExists('session_tokens');
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('personal_access_tokens');

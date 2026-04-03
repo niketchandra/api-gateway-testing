@@ -540,21 +540,19 @@ curl -X GET "http://localhost:8002/system-reactive?system_id=10&pin=12345" \
 
 ### 4.29 POST /system-deregister-force
 
-Headers:
-- Authorization: Bearer SESSION_TOKEN
-
 Variables:
 - systemId (optional alias, required if system_id is not sent)
 - system_id (optional alias, required if systemId is not sent)
+- email (required)
 - password (optional, required if pin is not sent)
 - pin (optional, required if password is not sent)
 
 ```bash
 curl -X POST "http://localhost:8002/system-deregister-force" \
-  -H "Authorization: Bearer SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "system_id": 10,
+    "email": "admin@example.com",
     "pin": "12345"
   }'
 ```
@@ -562,27 +560,24 @@ curl -X POST "http://localhost:8002/system-deregister-force" \
 ### 4.30 GET /system-deregister-force
 
 ```bash
-curl -X GET "http://localhost:8002/system-deregister-force?systemId=10&password=SecurePassword@123" \
-  -H "Authorization: Bearer SESSION_TOKEN"
+curl -X GET "http://localhost:8002/system-deregister-force?systemId=10&email=admin@example.com&password=SecurePassword@123"
 ```
 
 ### 4.31 POST /system-reactivate-force
 
-Headers:
-- Authorization: Bearer SESSION_TOKEN
-
 Variables:
 - systemId (optional alias, required if system_id is not sent)
 - system_id (optional alias, required if systemId is not sent)
+- email (required)
 - password (optional, required if pin is not sent)
 - pin (optional, required if password is not sent)
 
 ```bash
 curl -X POST "http://localhost:8002/system-reactivate-force" \
-  -H "Authorization: Bearer SESSION_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "system_id": 10,
+    "email": "admin@example.com",
     "pin": "12345"
   }'
 ```
@@ -590,8 +585,7 @@ curl -X POST "http://localhost:8002/system-reactivate-force" \
 ### 4.32 GET /system-reactivate-force
 
 ```bash
-curl -X GET "http://localhost:8002/system-reactivate-force?systemId=10&password=SecurePassword@123" \
-  -H "Authorization: Bearer SESSION_TOKEN"
+curl -X GET "http://localhost:8002/system-reactivate-force?systemId=10&email=admin@example.com&password=SecurePassword@123"
 ```
 
 ---

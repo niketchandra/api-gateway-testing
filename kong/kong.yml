@@ -109,6 +109,13 @@ services:
         methods:
           - POST
           - GET
+      - name: system-reactivate-force-route
+        paths:
+          - /system-reactivate-force
+        strip_path: false
+        methods:
+          - POST
+          - GET
       - name: files-upload-route
         paths:
           - /files/upload

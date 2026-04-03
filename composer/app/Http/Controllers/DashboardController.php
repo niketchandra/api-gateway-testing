@@ -21,26 +21,38 @@ class DashboardController extends Controller
     public function selectWorkspace(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'workspace_id' => ['nullable', 'integer', 'exists:workspaces,id'],
+            'workspace_id' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        if (empty($validated['workspace_id'])) {
+        if (!array_key_exists('workspace_id', $validated) || $validated['workspace_id'] === null || $validated['workspace_id'] === '') {
             $request->session()->forget('selected_workspace_id');
 
             return redirect()->back();
         }
 
         $workspaceId = (int) $validated['workspace_id'];
-        $workspace = Workspace::findOrFail($workspaceId);
         $user = Auth::user();
         $userRole = (int) ($user->rbac_id ?? 0);
 
         $isAllowed = false;
-        if ($userRole === 100) {
-            $isAllowed = (int) $workspace->org_id === (int) ($user->org_id ?? 200)
-                && (string) ($workspace->status ?? '') === 'active';
+
+        if ($workspaceId === 0) {
+            $isAllowed = DB::table('system_register')
+                ->where('user_id', (int) $user->id)
+                ->where(function ($query) {
+                    $query->where('workspace_id', 0)
+                        ->orWhereNull('workspace_id');
+                })
+                ->exists();
         } else {
-            $isAllowed = $user->workspaces()->where('workspaces.id', $workspaceId)->exists();
+            $workspace = Workspace::findOrFail($workspaceId);
+
+            if ($userRole === 100) {
+                $isAllowed = (int) $workspace->org_id === (int) ($user->org_id ?? 200)
+                    && (string) ($workspace->status ?? '') === 'active';
+            } else {
+                $isAllowed = $user->workspaces()->where('workspaces.id', $workspaceId)->exists();
+            }
         }
 
         if (!$isAllowed) {
@@ -176,7 +188,34 @@ class DashboardController extends Controller
 
     public function systemsRegistered(Request $request)
     {
-        $query = DB::table('system_register');
+        /** @var User $actor */
+        $actor = Auth::user();
+        $actorRole = (int) ($actor->rbac_id ?? 0);
+        $selectedWorkspaceId = $request->session()->has('selected_workspace_id')
+            ? (int) $request->session()->get('selected_workspace_id')
+            : null;
+
+        $query = DB::table('system_register as sr')
+            ->leftJoin('workspaces as w', 'w.id', '=', 'sr.workspace_id')
+            ->select('sr.*', 'w.name as workspace_name');
+
+        if ($selectedWorkspaceId === 0) {
+            $query->where('sr.user_id', $actor->id)
+                ->where(function ($unassignedQuery) {
+                    $unassignedQuery->where('sr.workspace_id', 0)
+                        ->orWhereNull('sr.workspace_id');
+                });
+        }
+
+        // Regular users can only see systems from the currently selected workspace.
+        if ($selectedWorkspaceId !== 0 && !in_array($actorRole, [100, 101], true)) {
+            if ($selectedWorkspaceId === null || $selectedWorkspaceId <= 0) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('sr.workspace_id', $selectedWorkspaceId)
+                    ->where('sr.user_id', $actor->id);
+            }
+        }
 
         // Apply filters
         if ($request->filled('name')) {
@@ -208,6 +247,134 @@ class DashboardController extends Controller
             ->get();
 
         return view('systems-registered', compact('items'));
+    }
+
+    public function editRegisteredSystem(int $systemId)
+    {
+        /** @var User $actor */
+        $actor = Auth::user();
+        $actorRole = (int) ($actor->rbac_id ?? 0);
+        $isAdmin = in_array($actorRole, [100, 101], true);
+
+        $query = SystemRegister::query();
+        if (!in_array($actorRole, [100, 101], true)) {
+            $query->where('user_id', $actor->id);
+        } elseif ($actorRole === 101) {
+            $query->where('org_id', $actor->org_id);
+        }
+
+        $system = $query->findOrFail($systemId);
+
+        if ((bool) ($system->is_locked ?? false) && !$isAdmin) {
+            return redirect()
+                ->route('systems-registered')
+                ->withErrors(['system' => 'System Info is locked. Contact an admin to edit details.']);
+        }
+
+        $workspaces = $this->editableWorkspacesForActor($actor);
+
+        return view('systems-registered-edit', [
+            'system' => $system,
+            'workspaces' => $workspaces,
+            'isAdmin' => $isAdmin,
+        ]);
+    }
+
+    public function updateRegisteredSystem(Request $request, int $systemId): RedirectResponse
+    {
+        /** @var User $actor */
+        $actor = Auth::user();
+        $actorRole = (int) ($actor->rbac_id ?? 0);
+        $isAdmin = in_array($actorRole, [100, 101], true);
+
+        $query = SystemRegister::query();
+        if (!$isAdmin) {
+            $query->where('user_id', $actor->id);
+        } elseif ($actorRole === 101) {
+            $query->where('org_id', $actor->org_id);
+        }
+
+        $system = $query->findOrFail($systemId);
+
+        if ((bool) ($system->is_locked ?? false) && !$isAdmin) {
+            return redirect()->back()->withErrors([
+                'system' => 'This system is locked. Contact an admin to modify details.',
+            ]);
+        }
+
+        $rules = [
+            'workspace_id' => ['nullable', 'integer', 'min:0'],
+            'tags' => ['nullable', 'string', 'max:512'],
+            'public_ip' => ['nullable', 'string', 'max:45'],
+            'public_facing' => ['required', 'in:0,1'],
+            'description' => ['nullable', 'string', 'max:4000'],
+            'distro' => ['nullable', 'string', 'max:1000'],
+            'version' => ['nullable', 'string', 'max:1000'],
+        ];
+
+        if ($isAdmin) {
+            $rules['status'] = ['required', 'in:active,inactive'];
+            $rules['is_locked'] = ['required', 'in:0,1'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $workspaceIds = $this->editableWorkspacesForActor($actor)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $workspaceIdInput = isset($validated['workspace_id']) && $validated['workspace_id'] !== ''
+            ? (int) $validated['workspace_id']
+            : 0;
+
+        if ($workspaceIdInput !== 0 && !in_array($workspaceIdInput, $workspaceIds, true)) {
+            return redirect()->back()->withErrors([
+                'workspace_id' => 'You are not allowed to assign this workspace.',
+            ])->withInput();
+        }
+
+        $updateData = [
+            'workspace_id' => $workspaceIdInput,
+            'tags' => $validated['tags'] ?? null,
+            'public_ip' => $validated['public_ip'] ?? null,
+            'public_facing' => ((string) $validated['public_facing']) === '1',
+            'description' => $validated['description'] ?? null,
+            'distro' => $validated['distro'] ?? null,
+            'version' => $validated['version'] ?? null,
+        ];
+
+        if ($isAdmin) {
+            $updateData['status'] = $validated['status'];
+            $updateData['is_locked'] = ((string) $validated['is_locked']) === '1';
+        }
+
+        $system->update($updateData);
+
+        return redirect()
+            ->route('systems-registered')
+            ->with('success', 'System details updated successfully.');
+    }
+
+    private function editableWorkspacesForActor(User $actor)
+    {
+        $role = (int) ($actor->rbac_id ?? 0);
+
+        if ($role === 100) {
+            return Workspace::query()
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+        if ($role === 101) {
+            return Workspace::query()
+                ->where('org_id', $actor->org_id)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+        return $actor->workspaces()
+            ->where('workspaces.status', 'active')
+            ->orderBy('workspaces.name')
+            ->get(['workspaces.id', 'workspaces.name']);
     }
 
     public function deleteRegisteredSystem(int $systemId): RedirectResponse

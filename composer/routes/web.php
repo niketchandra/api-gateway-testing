@@ -48,6 +48,8 @@ Route::middleware('app.installed')->group(function () {
         Route::get('/configuration-backups/{id}/view', [DashboardController::class, 'viewConfigurationFile'])->name('configuration-backups.view');
         Route::get('/configuration-backups/{id}/download', [DashboardController::class, 'downloadConfigurationFile'])->name('configuration-backups.download');
         Route::get('/systems-registered', [DashboardController::class, 'systemsRegistered'])->name('systems-registered');
+        Route::get('/systems-registered/{systemId}/edit', [DashboardController::class, 'editRegisteredSystem'])->name('systems-registered.edit');
+        Route::put('/systems-registered/{systemId}', [DashboardController::class, 'updateRegisteredSystem'])->name('systems-registered.update');
         Route::delete('/systems-registered/{systemId}', [DashboardController::class, 'deleteRegisteredSystem'])->name('systems-registered.delete');
         Route::get('/systems-registered/{systemId}/services', [DashboardController::class, 'systemServices'])->name('systems-registered.services');
         Route::get('/live-service-monitoring', [DashboardController::class, 'liveServiceMonitoring'])->name('live-service-monitoring');

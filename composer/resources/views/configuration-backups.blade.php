@@ -67,12 +67,12 @@
                         ? route('configuration-backups.service-versions', ['serviceId' => $item->service_id])
                         : route('configuration-backups.service-versions-by-name', ['serviceName' => $item->service_name]);
                 @endphp
-                <div style="background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%); border-radius: 14px; border: 2px solid {{ $isActive ? '#4caf50' : '#f44336' }}; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;" 
+                <div style="background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%); border-radius: 14px; border: 2px solid #d0d7de; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;" 
                      onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 28px rgba(0,0,0,0.15)';" 
                      onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';">
                     
                     <!-- Card Header -->
-                    <div style="background: {{ $isActive ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #eb3349 0%, #f45c43 100%)' }}; padding: 20px; position: relative;">
+                    <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 20px; position: relative;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="background: rgba(255,255,255,0.25); border-radius: 10px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
@@ -83,7 +83,7 @@
                                     <div style="font-size: 18px; color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $item->service_name ?? 'N/A' }}</div>
                                 </div>
                             </div>
-                            <div style="background: {{ $isActive ? 'rgba(76, 175, 80, 0.95)' : 'rgba(244, 67, 54, 0.95)' }}; padding: 6px 14px; border-radius: 20px; font-size: 11px; color: white; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <div style="background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(255,255,255,0.3); padding: 6px 14px; border-radius: 20px; font-size: 11px; color: white; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
                                 {{ ucfirst($item->status) }}
                             </div>
                         </div>
@@ -149,13 +149,13 @@
                         <!-- Action Buttons -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
                                     <button onclick="window.location.href='{{ $versionsUrl }}'" 
-                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
-                                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)';" 
-                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                                    style="background: #111827; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(17, 24, 39, 0.35)'; this.style.background='#1f2937';" 
+                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.background='#111827';">
                                 <i class="fas fa-eye"></i> View Versions ({{ $item->version_count ?? 1 }})
                             </button>
-                            <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; flex-direction: column;">
-                                <div style="font-size: 10px; opacity: 0.9;">LATEST VERSION</div>
+                            <div style="background: #f3f4f6; border: 1px solid #d1d5db; color: #111827; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; flex-direction: column;">
+                                <div style="font-size: 10px; color: #4b5563;">LATEST VERSION</div>
                                 <div style="font-size: 16px; font-weight: bold;">{{ $item->version ?? 'N/A' }}</div>
                             </div>
                         </div>

@@ -754,12 +754,12 @@
                         </div>
                     </div>
                     <div class="header-right">
-                        @if(!empty($workspaceSelectorWorkspaces) && count($workspaceSelectorWorkspaces) > 0)
+                        @if(!empty($workspaceSelectorOptions) && count($workspaceSelectorOptions) > 0)
                             <form method="POST" action="{{ route('workspace.select') }}" class="workspace-switcher">
                                 @csrf
                                 <label for="workspace_selector" style="font-size:12px; color:#4b5563; font-weight:600; text-transform:uppercase;">Workspace</label>
                                 <select id="workspace_selector" name="workspace_id" onchange="this.form.submit()">
-                                    @foreach($workspaceSelectorWorkspaces as $workspaceOption)
+                                    @foreach($workspaceSelectorOptions as $workspaceOption)
                                         <option value="{{ $workspaceOption->id }}" {{ (int) ($selectedWorkspaceId ?? 0) === (int) $workspaceOption->id ? 'selected' : '' }}>
                                             {{ $workspaceOption->name }}
                                         </option>
