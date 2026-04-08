@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
             'siteFeatures' => [],
             'ssoEnabled' => false,
             'ssoProvidersForAuth' => [],
+            'disableEmailRegistration' => false,
             'appVersion' => $this->resolveVersionFromDotEnv(),
         ];
 
@@ -92,9 +93,11 @@ class AppServiceProvider extends ServiceProvider
                 $providerKeys = array_keys($providerCatalog);
                 $enabledProviders = $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
                 $ssoEnabledFlag = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+                $disableEmailRegistration = filter_var((string) AdminSetting::getValue('disable_email_registration', 'false'), FILTER_VALIDATE_BOOL);
 
-                $sharedSettings['ssoEnabled'] = $ssoEnabledFlag || !empty($enabledProviders);
-                $sharedSettings['ssoProvidersForAuth'] = collect($enabledProviders)
+                $sharedSettings['ssoEnabled'] = $ssoEnabledFlag;
+                $sharedSettings['disableEmailRegistration'] = $disableEmailRegistration;
+                $sharedSettings['ssoProvidersForAuth'] = collect($ssoEnabledFlag ? $enabledProviders : [])
                     ->map(function ($providerKey) use ($providerCatalog) {
                         $providerKey = (string) $providerKey;
                         if (!isset($providerCatalog[$providerKey])) {
@@ -119,6 +122,7 @@ class AppServiceProvider extends ServiceProvider
                 'siteFeatures' => [],
                 'ssoEnabled' => false,
                 'ssoProvidersForAuth' => [],
+                'disableEmailRegistration' => false,
                 'appVersion' => $this->resolveVersionFromDotEnv(),
             ];
         }
@@ -210,6 +214,11 @@ class AppServiceProvider extends ServiceProvider
 
     private function getEnvValue(string $key, string $default = ''): string
     {
+        $fileValue = $this->readEnvFileValue($key);
+        if ($fileValue !== null) {
+            return $fileValue;
+        }
+
         $value = env($key);
         if ($value !== null && $value !== false) {
             return trim((string) $value);
@@ -221,6 +230,32 @@ class AppServiceProvider extends ServiceProvider
         }
 
         return trim($default);
+    }
+
+    private function readEnvFileValue(string $key): ?string
+    {
+        $envPath = base_path('.env');
+        if (!is_readable($envPath)) {
+            return null;
+        }
+
+        $pattern = '/^' . preg_quote($key, '/') . '=(.*)$/m';
+        $contents = @file_get_contents($envPath);
+        if ($contents === false || preg_match($pattern, $contents, $matches) !== 1) {
+            return null;
+        }
+
+        $raw = trim((string) ($matches[1] ?? ''));
+        if (
+            strlen($raw) >= 2
+            && str_starts_with($raw, '"')
+            && str_ends_with($raw, '"')
+        ) {
+            $raw = substr($raw, 1, -1);
+            $raw = str_replace('\\"', '"', $raw);
+        }
+
+        return trim($raw);
     }
 
     private function resolveEnabledSsoProvidersFromEnvironment(array $providerKeys): array

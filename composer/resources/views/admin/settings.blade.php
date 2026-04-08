@@ -460,9 +460,17 @@
             @csrf
             <div style="margin-bottom:12px;">
                 <label style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" name="sso_enabled" value="1" {{ old('sso_enabled', $ssoEnabled) ? 'checked' : '' }}>
+                    <input id="sso-enabled-toggle" type="checkbox" name="sso_enabled" value="1" {{ old('sso_enabled', $ssoEnabled) ? 'checked' : '' }}>
                     <span>Enable SSO login</span>
                 </label>
+            </div>
+
+            <div id="disable-email-registration-wrap" style="margin-bottom:12px; {{ old('sso_enabled', $ssoEnabled) ? '' : 'display:none;' }}">
+                <label style="display:flex; align-items:center; gap:8px;">
+                    <input id="disable-email-registration-toggle" type="checkbox" name="disable_email_registration" value="1" {{ old('disable_email_registration', $disableEmailRegistration ?? false) ? 'checked' : '' }}>
+                    <span>Disable user registration with email/password</span>
+                </label>
+                <p style="margin:6px 0 0 26px; font-size:12px; color:#6b7280;">When enabled, registration and forgot-password by email are disabled on the login page.</p>
             </div>
 
             @php
@@ -558,6 +566,9 @@
     const backupPortalToS3 = document.getElementById('backup-portal-to-s3');
     const backupConfigCronWrap = document.getElementById('backup-config-cron-wrap');
     const backupPortalCronWrap = document.getElementById('backup-portal-cron-wrap');
+    const ssoEnabledToggle = document.getElementById('sso-enabled-toggle');
+    const disableEmailRegistrationWrap = document.getElementById('disable-email-registration-wrap');
+    const disableEmailRegistrationToggle = document.getElementById('disable-email-registration-toggle');
 
     function activateTab(tabName) {
         tabContents.forEach((content) => {
@@ -611,6 +622,24 @@
         checkbox.addEventListener('change', updateProviderConfigVisibility);
     });
 
+    function updateSsoDependentVisibility() {
+        if (!ssoEnabledToggle || !disableEmailRegistrationWrap || !disableEmailRegistrationToggle) {
+            return;
+        }
+
+        const ssoEnabled = ssoEnabledToggle.checked;
+        disableEmailRegistrationWrap.style.display = ssoEnabled ? 'block' : 'none';
+        disableEmailRegistrationToggle.disabled = !ssoEnabled;
+
+        if (!ssoEnabled) {
+            disableEmailRegistrationToggle.checked = false;
+        }
+    }
+
+    if (ssoEnabledToggle) {
+        ssoEnabledToggle.addEventListener('change', updateSsoDependentVisibility);
+    }
+
     function updateBackupVisibility() {
         if (backupRestoreEnabled && backupRestoreDetails) {
             const enabled = backupRestoreEnabled.value === '1';
@@ -639,6 +668,7 @@
     }
 
     updateProviderConfigVisibility();
+    updateSsoDependentVisibility();
     updateBackupVisibility();
 })();
 </script>

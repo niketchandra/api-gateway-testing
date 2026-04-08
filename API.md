@@ -59,30 +59,31 @@
 25. [GET /config-files/{fileId}](#415-get-config-filesfileid)
 26. [GET /config-files/download/{id}](#416-get-config-filesdownloadid)
 27. [GET /config-files/{fileId}/raw-data](#417-get-config-filesfileidraw-data)
-28. [DELETE /config-files/{fileId}](#418-delete-config-filesfileid)
+28. [GET /config-files/config-show](#418-get-config-filesconfig-show)
+29. [DELETE /config-files/{fileId}](#419-delete-config-filesfileid)
 
 ### 3.8 Service APIs
 
-29. [POST /services](#419-post-services)
-30. [GET /services](#420-get-services)
-31. [GET /services/{serviceId}](#421-get-servicesserviceid)
+30. [POST /services](#420-post-services)
+31. [GET /services](#421-get-services)
+32. [GET /services/{serviceId}](#422-get-servicesserviceid)
 
 ### 3.9 System Register APIs
 
-32. [POST /system-register](#422-post-system-register)
-33. [GET /system-register](#423-get-system-register)
-34. [GET /system-register/pat/{patTokenId}](#424-get-system-registerpatpattokenid)
-35. [GET /system-register/user/{userId}](#425-get-system-registeruseruserid)
+33. [POST /system-register](#423-post-system-register)
+34. [GET /system-register](#424-get-system-register)
+35. [GET /system-register/pat/{patTokenId}](#425-get-system-registerpatpattokenid)
+36. [GET /system-register/user/{userId}](#426-get-system-registeruseruserid)
 
 ### 3.10 System State APIs
 
-36. [POST /system-deregister](#426-post-system-deregister)
-37. [POST /system-reactive](#427-post-system-reactive)
-38. [GET /system-reactive](#428-get-system-reactive)
-39. [POST /system-deregister-force](#429-post-system-deregister-force)
-40. [GET /system-deregister-force](#430-get-system-deregister-force)
-41. [POST /system-reactivate-force](#431-post-system-reactivate-force)
-42. [GET /system-reactivate-force](#432-get-system-reactivate-force)
+37. [POST /system-deregister](#427-post-system-deregister)
+38. [POST /system-reactive](#428-post-system-reactive)
+39. [GET /system-reactive](#429-get-system-reactive)
+40. [POST /system-deregister-force](#430-post-system-deregister-force)
+41. [GET /system-deregister-force](#431-get-system-deregister-force)
+42. [POST /system-reactivate-force](#432-post-system-reactivate-force)
+43. [GET /system-reactivate-force](#433-get-system-reactivate-force)
 
 ---
 
@@ -406,14 +407,30 @@ curl -X GET "http://localhost:8002/config-files/1/raw-data" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.18 DELETE /config-files/{fileId}
+### 4.18 GET /config-files/config-show
+
+Variables:
+- system_id (required)
+- validation_key (required)
+- service_name (required)
+
+Returns:
+- All matching versions across users for the same system_id + validation_key + service_name
+- Includes version metadata such as id, version, created_at, updated_at, and created_by info
+
+```bash
+curl -X GET "http://localhost:8002/config-files/config-show?system_id=10&validation_key=abc123&service_name=nginx" \
+  -H "Authorization: Bearer PAT_TOKEN"
+```
+
+### 4.19 DELETE /config-files/{fileId}
 
 ```bash
 curl -X DELETE "http://localhost:8002/config-files/1" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.19 POST /services
+### 4.20 POST /services
 
 Variables:
 - service_name (required)
@@ -434,7 +451,7 @@ curl -X POST "http://localhost:8002/services" \
   }'
 ```
 
-### 4.20 GET /services
+### 4.21 GET /services
 
 Query variables:
 - system_id (optional)
@@ -444,14 +461,14 @@ curl -X GET "http://localhost:8002/services?system_id=10" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.21 GET /services/{serviceId}
+### 4.22 GET /services/{serviceId}
 
 ```bash
 curl -X GET "http://localhost:8002/services/100" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.22 POST /system-register
+### 4.23 POST /system-register
 
 Variables:
 - system_name (required)
@@ -474,28 +491,28 @@ curl -X POST "http://localhost:8002/system-register" \
   }'
 ```
 
-### 4.23 GET /system-register
+### 4.24 GET /system-register
 
 ```bash
 curl -X GET "http://localhost:8002/system-register" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.24 GET /system-register/pat/{patTokenId}
+### 4.25 GET /system-register/pat/{patTokenId}
 
 ```bash
 curl -X GET "http://localhost:8002/system-register/pat/1" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.25 GET /system-register/user/{userId}
+### 4.26 GET /system-register/user/{userId}
 
 ```bash
 curl -X GET "http://localhost:8002/system-register/user/1" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.26 POST /system-deregister
+### 4.27 POST /system-deregister
 
 Variables:
 - systemId (optional alias, required if system_id is not sent)
@@ -513,7 +530,7 @@ curl -X POST "http://localhost:8002/system-deregister" \
   }'
 ```
 
-### 4.27 POST /system-reactive
+### 4.28 POST /system-reactive
 
 Variables:
 - systemId (optional alias, required if system_id is not sent)
@@ -531,14 +548,14 @@ curl -X POST "http://localhost:8002/system-reactive" \
   }'
 ```
 
-### 4.28 GET /system-reactive
+### 4.29 GET /system-reactive
 
 ```bash
 curl -X GET "http://localhost:8002/system-reactive?system_id=10&pin=12345" \
   -H "Authorization: Bearer PAT_TOKEN"
 ```
 
-### 4.29 POST /system-deregister-force
+### 4.30 POST /system-deregister-force
 
 Variables:
 - systemId (optional alias, required if system_id is not sent)
@@ -557,13 +574,13 @@ curl -X POST "http://localhost:8002/system-deregister-force" \
   }'
 ```
 
-### 4.30 GET /system-deregister-force
+### 4.31 GET /system-deregister-force
 
 ```bash
 curl -X GET "http://localhost:8002/system-deregister-force?systemId=10&email=admin@example.com&password=SecurePassword@123"
 ```
 
-### 4.31 POST /system-reactivate-force
+### 4.32 POST /system-reactivate-force
 
 Variables:
 - systemId (optional alias, required if system_id is not sent)
@@ -582,7 +599,7 @@ curl -X POST "http://localhost:8002/system-reactivate-force" \
   }'
 ```
 
-### 4.32 GET /system-reactivate-force
+### 4.33 GET /system-reactivate-force
 
 ```bash
 curl -X GET "http://localhost:8002/system-reactivate-force?systemId=10&email=admin@example.com&password=SecurePassword@123"

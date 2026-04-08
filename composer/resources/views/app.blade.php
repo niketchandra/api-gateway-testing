@@ -91,6 +91,12 @@
             border-bottom-color: #000000;
         }
 
+        .tab-btn:disabled {
+            color: #b8b8b8;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
         .tab-content {
             display: none;
         }
@@ -535,15 +541,19 @@
             </div>
 
             <div class="form-container" id="authForm">
+                @php
+                    $disableEmailRegistration = (bool) ($disableEmailRegistration ?? false);
+                    $showSsoAuthOptions = (bool) ($ssoEnabled ?? false) && !empty($ssoProvidersForAuth ?? []);
+                @endphp
                 <!-- Auth Tabs -->
                 <div class="tab-buttons">
-                    <button class="tab-btn active" onclick="switchTab('login')">
+                    <button class="tab-btn active" data-tab="login" onclick="switchTab('login', event)">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </button>
-                    <button class="tab-btn" onclick="switchTab('register')">
+                    <button class="tab-btn" data-tab="register" onclick="switchTab('register', event)" {{ $disableEmailRegistration ? 'disabled' : '' }}>
                         <i class="fas fa-user-plus"></i> Register
                     </button>
-                    <button class="tab-btn" onclick="switchTab('forgot')">
+                    <button class="tab-btn" data-tab="forgot" onclick="switchTab('forgot', event)" {{ $disableEmailRegistration ? 'disabled' : '' }}>
                         <i class="fas fa-key"></i> Forgot
                     </button>
                 </div>
@@ -587,7 +597,7 @@
                             <i class="fas fa-sign-in-alt"></i> Login
                         </button>
 
-                        @if(!empty($ssoProvidersForAuth ?? []))
+                        @if($showSsoAuthOptions)
                             <div class="divider">Or continue with SSO</div>
                             <div class="sso-grid">
                                 @foreach($ssoProvidersForAuth as $ssoProvider)
@@ -612,31 +622,40 @@
                         </div>
                         @endif
 
-                        <div class="form-group">
-                            <label for="reg_name"><i class="fas fa-user"></i> Full Name</label>
-                            <input type="text" id="reg_name" name="name" placeholder="John Doe" required value="{{ old('name') }}">
+                        @if($disableEmailRegistration)
+                        <div class="alert alert-error">
+                            <i class="fas fa-ban"></i>
+                            <span>Email registration is disabled by the administrator. Please use SSO.</span>
                         </div>
+                        @endif
 
-                        <div class="form-group">
-                            <label for="reg_email"><i class="fas fa-envelope"></i> Email Address</label>
-                            <input type="email" id="reg_email" name="email" placeholder="you@example.com" required value="{{ old('email') }}">
-                        </div>
+                        <fieldset {{ $disableEmailRegistration ? 'disabled' : '' }} style="border:0; margin:0; padding:0; {{ $disableEmailRegistration ? 'opacity:0.55;' : '' }}">
+                            <div class="form-group">
+                                <label for="reg_name"><i class="fas fa-user"></i> Full Name</label>
+                                <input type="text" id="reg_name" name="name" placeholder="John Doe" required value="{{ old('name') }}">
+                            </div>
 
-                        <div class="form-group">
-                            <label for="reg_password"><i class="fas fa-lock"></i> Password</label>
-                            <input type="password" id="reg_password" name="password" placeholder="Minimum 8 characters" required>
-                        </div>
+                            <div class="form-group">
+                                <label for="reg_email"><i class="fas fa-envelope"></i> Email Address</label>
+                                <input type="email" id="reg_email" name="email" placeholder="you@example.com" required value="{{ old('email') }}">
+                            </div>
 
-                        <div class="form-group">
-                            <label for="reg_confirm_password"><i class="fas fa-lock"></i> Confirm Password</label>
-                            <input type="password" id="reg_confirm_password" name="password_confirmation" placeholder="Confirm password" required>
-                        </div>
+                            <div class="form-group">
+                                <label for="reg_password"><i class="fas fa-lock"></i> Password</label>
+                                <input type="password" id="reg_password" name="password" placeholder="Minimum 8 characters" required>
+                            </div>
 
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-user-plus"></i> Create Account
-                        </button>
+                            <div class="form-group">
+                                <label for="reg_confirm_password"><i class="fas fa-lock"></i> Confirm Password</label>
+                                <input type="password" id="reg_confirm_password" name="password_confirmation" placeholder="Confirm password" required>
+                            </div>
 
-                        @if(!empty($ssoProvidersForAuth ?? []))
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus"></i> Create Account
+                            </button>
+                        </fieldset>
+
+                        @if($showSsoAuthOptions)
                             <div class="divider">Or register with SSO</div>
                             <div class="sso-grid">
                                 @foreach($ssoProvidersForAuth as $ssoProvider)
@@ -654,6 +673,14 @@
                 <div class="tab-content" id="forgot">
                     <form method="POST" action="{{ route('password.email') }}">
                         @csrf
+                        @if($disableEmailRegistration)
+                        <div class="alert alert-error">
+                            <i class="fas fa-ban"></i>
+                            <span>Forgot password is disabled while email registration is off.</span>
+                        </div>
+                        @endif
+
+                        <fieldset {{ $disableEmailRegistration ? 'disabled' : '' }} style="border:0; margin:0; padding:0; {{ $disableEmailRegistration ? 'opacity:0.55;' : '' }}">
                         <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
                             Enter your email address and we'll send you a link to reset your password.
                         </p>
@@ -680,6 +707,7 @@
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-envelope"></i> Send Reset Link
                         </button>
+                        </fieldset>
                     </form>
                 </div>
             </div>
@@ -908,7 +936,15 @@
     </div>
 
     <script>
-        function switchTab(tabName) {
+        function switchTab(tabName, evt) {
+            const targetButton = evt && evt.target
+                ? evt.target.closest('.tab-btn')
+                : document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+
+            if (targetButton && targetButton.disabled) {
+                return;
+            }
+
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -922,10 +958,9 @@
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
 
-            // Add active class to clicked button (find the closest button element)
-            const clickedButton = event.target.closest('.tab-btn');
-            if (clickedButton) {
-                clickedButton.classList.add('active');
+            // Add active class to clicked button
+            if (targetButton) {
+                targetButton.classList.add('active');
             }
         }
 
@@ -938,6 +973,12 @@
             if (isAuthenticated) {
                 authForm.classList.add('hidden');
                 dashboardNav.classList.remove('hidden');
+                return;
+            }
+
+            const activeButton = document.querySelector('.tab-btn.active');
+            if (activeButton && activeButton.disabled) {
+                switchTab('login');
             }
         });
 

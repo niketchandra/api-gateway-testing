@@ -351,6 +351,78 @@ class FileController extends Controller
     }
 
     /**
+     * List all versions by system_id, validation_key, and service_name across all users.
+     */
+    public function listConfigVersionsBySystemValidationAndService(Request $request)
+    {
+        $data = $request->validate([
+            'system_id' => ['required', 'integer', 'exists:system_register,id'],
+            'validation_key' => ['required', 'string', 'max:255'],
+            'service_name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $files = ConfigurationFile::query()
+            ->leftJoin('users', 'users.id', '=', 'configuration_files.user_id')
+            ->where('configuration_files.system_register_id', $data['system_id'])
+            ->where('configuration_files.validation_hash', $data['validation_key'])
+            ->where('configuration_files.service_name', $data['service_name'])
+            ->where('configuration_files.status', 'active')
+            ->orderByDesc('configuration_files.created_at')
+            ->select([
+                'configuration_files.id',
+                'configuration_files.file_name',
+                'configuration_files.service_id',
+                'configuration_files.service_name',
+                'configuration_files.system_register_id',
+                'configuration_files.validation_hash',
+                'configuration_files.version',
+                'configuration_files.file_location',
+                'configuration_files.storage_disk',
+                'configuration_files.status',
+                'configuration_files.created_at',
+                'configuration_files.updated_at',
+                'configuration_files.user_id as created_by_user_id',
+                'users.name as created_by_user_name',
+                'users.email as created_by_user_email',
+            ])
+            ->get()
+            ->map(function ($file) {
+                $location = $this->resolveFileLocationMetadata($file->storage_disk ?? null, (string) $file->file_location);
+
+                return [
+                    'id' => $file->id,
+                    'file_name' => $file->file_name,
+                    'service_id' => $file->service_id,
+                    'service_name' => $file->service_name,
+                    'system_register_id' => $file->system_register_id,
+                    'validation_key' => $file->validation_hash,
+                    'version' => $file->version,
+                    'file_location' => $file->file_location,
+                    'storage_disk' => $location['disk'],
+                    'file_relative_path' => $location['path'],
+                    'storage_base_url' => $this->resolveStorageBaseUrl($location['disk']),
+                    'file_url' => $this->buildFileUrl($location['disk'], $location['path']),
+                    'status' => $file->status,
+                    'created_at' => $file->created_at,
+                    'updated_at' => $file->updated_at,
+                    'created_by' => [
+                        'id' => $file->created_by_user_id,
+                        'name' => $file->created_by_user_name,
+                        'email' => $file->created_by_user_email,
+                    ],
+                ];
+            });
+
+        return response()->json([
+            'system_id' => (int) $data['system_id'],
+            'validation_key' => $data['validation_key'],
+            'service_name' => $data['service_name'],
+            'total' => $files->count(),
+            'versions' => $files,
+        ]);
+    }
+
+    /**
      * Download configuration file from file system (active only)
      */
     public function downloadConfigFile(Request $request, $fileId)

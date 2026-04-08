@@ -54,7 +54,7 @@
         <div class="w-full max-w-3xl rounded-3xl border border-white/20 bg-white/85 p-6 shadow-glow backdrop-blur-xl sm:p-10">
             <div class="mb-6 flex items-center gap-4">
                 <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-lg font-extrabold text-white shadow-lg">
-                    AT
+                    AtGlance
                 </div>
                 <div>
                     <h1 class="text-2xl font-extrabold text-slate-900 sm:text-3xl">AtGlance Project Installer</h1>

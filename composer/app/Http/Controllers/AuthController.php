@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,7 @@ class AuthController extends Controller
 
         $enabledProviders = $this->resolveEnabledSsoProvidersFromEnvironment(array_keys($providerCatalog));
         $ssoEnabledFlag = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
-        $effectiveSsoEnabled = $ssoEnabledFlag || !empty($enabledProviders);
+        $effectiveSsoEnabled = $ssoEnabledFlag;
 
         if (!$effectiveSsoEnabled) {
             return redirect()->route('home')->withErrors([
@@ -236,6 +237,12 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        if ($this->isEmailRegistrationDisabled()) {
+            return back()->withErrors([
+                'register' => 'Email registration is disabled. Please continue with SSO.',
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
@@ -326,6 +333,12 @@ class AuthController extends Controller
      */
     public function sendPasswordResetLink(Request $request)
     {
+        if ($this->isEmailRegistrationDisabled()) {
+            return back()->withErrors([
+                'email' => 'Password reset is disabled while email registration is turned off. Use SSO sign-in.',
+            ]);
+        }
+
         $validated = $request->validate([
             'email' => 'required|email|exists:users',
         ]);
@@ -401,6 +414,11 @@ class AuthController extends Controller
 
     private function getEnvValue(string $key, string $default = ''): string
     {
+        $fileValue = $this->readEnvFileValue($key);
+        if ($fileValue !== null) {
+            return $fileValue;
+        }
+
         $value = env($key);
         if ($value !== null && $value !== false) {
             return trim((string) $value);
@@ -412,6 +430,32 @@ class AuthController extends Controller
         }
 
         return trim($default);
+    }
+
+    private function readEnvFileValue(string $key): ?string
+    {
+        $envPath = base_path('.env');
+        if (!is_readable($envPath)) {
+            return null;
+        }
+
+        $pattern = '/^' . preg_quote($key, '/') . '=(.*)$/m';
+        $contents = @file_get_contents($envPath);
+        if ($contents === false || preg_match($pattern, $contents, $matches) !== 1) {
+            return null;
+        }
+
+        $raw = trim((string) ($matches[1] ?? ''));
+        if (
+            strlen($raw) >= 2
+            && str_starts_with($raw, '"')
+            && str_ends_with($raw, '"')
+        ) {
+            $raw = substr($raw, 1, -1);
+            $raw = str_replace('\\"', '"', $raw);
+        }
+
+        return trim($raw);
     }
 
     private function getSecretEnvValue(string $key, string $default = ''): string
@@ -453,5 +497,12 @@ class AuthController extends Controller
         $normalized = trim($normalized, '_');
 
         return 'SSO_' . $normalized;
+    }
+
+    private function isEmailRegistrationDisabled(): bool
+    {
+        $value = (string) AdminSetting::getValue('disable_email_registration', 'false');
+
+        return filter_var($value, FILTER_VALIDATE_BOOL);
     }
 }

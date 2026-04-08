@@ -97,7 +97,7 @@
 
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0.45
     # env_file:
     #   - ./.env.docker
     ports:

@@ -808,6 +808,7 @@ class AdminDashboardController extends Controller
             'mailFromName' => AdminSetting::getValue('mail_from_name', ''),
             'mailRecipientsText' => implode(',', $mailRecipients),
             'ssoEnabled' => $ssoSettings['enabled'],
+            'disableEmailRegistration' => $this->isFeatureEnabledSetting('disable_email_registration'),
             'ssoProvider' => $ssoEnabledProviders[0] ?? '',
             'ssoProviderOptions' => $ssoProviderOptions,
             'ssoEnabledProviders' => $ssoEnabledProviders,
@@ -1289,6 +1290,7 @@ class AdminDashboardController extends Controller
 
         $validated = $request->validate([
             'sso_enabled' => ['nullable', 'boolean'],
+            'disable_email_registration' => ['nullable', 'boolean'],
             'sso_enabled_providers' => ['nullable', 'array'],
             'sso_enabled_providers.*' => [Rule::in($providerKeys)],
             'sso_provider_urls' => ['nullable', 'array'],
@@ -1312,7 +1314,7 @@ class AdminDashboardController extends Controller
             ->values()
             ->all();
 
-        $effectiveSsoEnabled = $request->boolean('sso_enabled') || !empty($enabledProviders);
+        $effectiveSsoEnabled = $request->boolean('sso_enabled');
 
         if ($effectiveSsoEnabled && empty($enabledProviders)) {
             return back()->withErrors([
@@ -1386,6 +1388,10 @@ class AdminDashboardController extends Controller
 
         $this->setEnvironmentValues($envUpdates);
 
+        if ($effectiveSsoEnabled) {
+            AdminSetting::putValue('sso', 'disable_email_registration', $request->boolean('disable_email_registration') ? 'true' : 'false');
+        }
+
         return redirect()->route('admin.settings', ['tab' => 'sso'])->with('success', 'SSO settings saved successfully.');
     }
 
@@ -1424,7 +1430,7 @@ class AdminDashboardController extends Controller
             $providerTenantIds[$providerKey] = $this->getEnvValue($prefix . '_TENANT_ID', '');
         }
 
-        $ssoEnabled = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL) || !empty($enabledProviders);
+        $ssoEnabled = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
 
         return [
             'enabled' => $ssoEnabled,
@@ -1963,6 +1969,11 @@ class AdminDashboardController extends Controller
 
     private function getEnvValue(string $key, string $default = ''): string
     {
+        $fileValue = $this->readEnvFileValue($key);
+        if ($fileValue !== null) {
+            return $fileValue;
+        }
+
         $value = env($key);
         if ($value !== null && $value !== false) {
             return trim((string) $value);
@@ -1974,6 +1985,32 @@ class AdminDashboardController extends Controller
         }
 
         return trim($default);
+    }
+
+    private function readEnvFileValue(string $key): ?string
+    {
+        $envPath = base_path('.env');
+        if (!File::exists($envPath) || !File::isReadable($envPath)) {
+            return null;
+        }
+
+        $pattern = '/^' . preg_quote($key, '/') . '=(.*)$/m';
+        $contents = File::get($envPath);
+        if (preg_match($pattern, $contents, $matches) !== 1) {
+            return null;
+        }
+
+        $raw = trim((string) ($matches[1] ?? ''));
+        if (
+            strlen($raw) >= 2
+            && str_starts_with($raw, '"')
+            && str_ends_with($raw, '"')
+        ) {
+            $raw = substr($raw, 1, -1);
+            $raw = str_replace('\\"', '"', $raw);
+        }
+
+        return trim($raw);
     }
 
     private function getSecretEnvValue(string $key, string $default = ''): string
