@@ -71,7 +71,10 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        if (in_array((int) Auth::user()->rbac_id, [100, 101], true)) {
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        if (in_array((int) $actor->rbac_id, [100, 101], true)) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -80,21 +83,34 @@ class DashboardController extends Controller
         $previousWeekStart = $currentWeekStart->copy()->subWeek();
         $previousWeekEnd = $currentWeekStart->copy()->subSecond();
 
-        $totalConfigBackups = DB::table('configuration_files')->count();
-        $currentWeekConfigBackups = DB::table('configuration_files')
-            ->whereBetween('created_at', [$currentWeekStart, $now])
-            ->count();
-        $previousWeekConfigBackups = DB::table('configuration_files')
-            ->whereBetween('created_at', [$previousWeekStart, $previousWeekEnd])
-            ->count();
+        $workspaceIds = $this->workspaceIdsForVisibility($actor);
 
-        $totalSystemsRegistered = DB::table('system_register')->count();
-        $currentWeekSystemsRegistered = DB::table('system_register')
-            ->whereBetween('created_at', [$currentWeekStart, $now])
-            ->count();
-        $previousWeekSystemsRegistered = DB::table('system_register')
-            ->whereBetween('created_at', [$previousWeekStart, $previousWeekEnd])
-            ->count();
+        $configBaseQuery = DB::table('configuration_files as cf')
+            ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id');
+        $this->applyWorkspaceScopeToConfigurationQuery($configBaseQuery, 'cf', 'sr', $actor);
+
+        $totalConfigBackups = (clone $configBaseQuery)->count('cf.id');
+        $currentWeekConfigBackups = (clone $configBaseQuery)
+            ->whereBetween('cf.created_at', [$currentWeekStart, $now])
+            ->count('cf.id');
+        $previousWeekConfigBackups = (clone $configBaseQuery)
+            ->whereBetween('cf.created_at', [$previousWeekStart, $previousWeekEnd])
+            ->count('cf.id');
+
+        $systemsBaseQuery = DB::table('system_register as sr');
+        if (empty($workspaceIds)) {
+            $systemsBaseQuery->whereRaw('1 = 0');
+        } else {
+            $systemsBaseQuery->whereIn('sr.workspace_id', $workspaceIds);
+        }
+
+        $totalSystemsRegistered = (clone $systemsBaseQuery)->count('sr.id');
+        $currentWeekSystemsRegistered = (clone $systemsBaseQuery)
+            ->whereBetween('sr.created_at', [$currentWeekStart, $now])
+            ->count('sr.id');
+        $previousWeekSystemsRegistered = (clone $systemsBaseQuery)
+            ->whereBetween('sr.created_at', [$previousWeekStart, $previousWeekEnd])
+            ->count('sr.id');
 
         $configChange = $this->calculateWeeklyChange($currentWeekConfigBackups, $previousWeekConfigBackups);
         $systemsChange = $this->calculateWeeklyChange($currentWeekSystemsRegistered, $previousWeekSystemsRegistered);
@@ -132,6 +148,9 @@ class DashboardController extends Controller
 
     public function configurationBackups(Request $request)
     {
+        /** @var User $actor */
+        $actor = Auth::user();
+
         // Subquery to get the latest version for each service
         $latestVersionsSubquery = DB::table('configuration_files')
             ->select('service_name', DB::raw('MAX(id) as latest_id'))
@@ -158,6 +177,8 @@ class DashboardController extends Controller
                 'sr.status as system_status',
                 DB::raw('(SELECT COUNT(*) FROM configuration_files WHERE service_name = cf.service_name) as version_count')
             );
+
+            $this->applyWorkspaceScopeToConfigurationQuery($query, 'cf', 'sr', $actor);
 
         if ($request->filled('service_name')) {
             $query->where('cf.service_name', 'like', '%' . $request->service_name . '%');
@@ -199,23 +220,7 @@ class DashboardController extends Controller
             ->leftJoin('workspaces as w', 'w.id', '=', 'sr.workspace_id')
             ->select('sr.*', 'w.name as workspace_name');
 
-        if ($selectedWorkspaceId === 0) {
-            $query->where('sr.user_id', $actor->id)
-                ->where(function ($unassignedQuery) {
-                    $unassignedQuery->where('sr.workspace_id', 0)
-                        ->orWhereNull('sr.workspace_id');
-                });
-        }
-
-        // Regular users can only see systems from the currently selected workspace.
-        if ($selectedWorkspaceId !== 0 && !in_array($actorRole, [100, 101], true)) {
-            if ($selectedWorkspaceId === null || $selectedWorkspaceId <= 0) {
-                $query->whereRaw('1 = 0');
-            } else {
-                $query->where('sr.workspace_id', $selectedWorkspaceId)
-                    ->where('sr.user_id', $actor->id);
-            }
-        }
+        $this->applyWorkspaceScopeToSystemsQuery($query, 'sr', $actor, $selectedWorkspaceId);
 
         // Apply filters
         if ($request->filled('name')) {
@@ -413,10 +418,17 @@ class DashboardController extends Controller
      */
     public function systemServices(Request $request, $systemId)
     {
+        /** @var User $actor */
+        $actor = Auth::user();
+
         $system = DB::table('system_register')->where('id', $systemId)->first();
 
         if (!$system) {
             abort(404, 'System not found');
+        }
+
+        if (!$this->canAccessSystemRecord($actor, $system)) {
+            abort(403);
         }
 
         $query = DB::table('services as s')
@@ -473,10 +485,18 @@ class DashboardController extends Controller
      */
     public function viewServiceVersions($serviceId)
     {
+        /** @var User $actor */
+        $actor = Auth::user();
+
         $service = DB::table('services')->where('service_id', $serviceId)->first();
 
         if (!$service) {
             abort(404, 'Service not found');
+        }
+
+        $system = DB::table('system_register')->where('id', $service->system_id)->first();
+        if (!$system || !$this->canAccessSystemRecord($actor, $system)) {
+            abort(403);
         }
         
         $versions = DB::table('configuration_files as cf')
@@ -515,11 +535,32 @@ class DashboardController extends Controller
      */
     public function viewServiceVersionsByName($serviceName)
     {
+        /** @var User $actor */
+        $actor = Auth::user();
+
         $serviceName = urldecode($serviceName);
+
+        $workspaceIds = $this->workspaceIdsForVisibility($actor);
+        $isSuperAdmin = (int) ($actor->rbac_id ?? 0) === 100;
 
         $versions = DB::table('configuration_files as cf')
             ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id')
             ->where('cf.service_name', $serviceName)
+            ->when(!$isSuperAdmin, function ($query) use ($actor, $workspaceIds) {
+                $query->where(function ($scoped) use ($actor, $workspaceIds) {
+                    if (!empty($workspaceIds)) {
+                        $scoped->whereIn('sr.workspace_id', $workspaceIds);
+                    }
+
+                    $scoped->orWhere(function ($ownUnassigned) use ($actor) {
+                        $ownUnassigned->where('cf.user_id', (int) $actor->id)
+                            ->where(function ($unassigned) {
+                                $unassigned->whereNull('cf.system_register_id')
+                                    ->orWhere('cf.system_register_id', 0);
+                            });
+                    });
+                });
+            })
             ->select(
                 'cf.id',
                 'cf.service_id',
@@ -553,14 +594,22 @@ class DashboardController extends Controller
      */
     public function viewConfigurationFile($id)
     {
+        /** @var User $actor */
+        $actor = Auth::user();
+
         $config = DB::table('configuration_files')
             ->leftJoin('raw_data', 'configuration_files.id', '=', 'raw_data.file_id')
+            ->leftJoin('system_register as sr', 'configuration_files.system_register_id', '=', 'sr.id')
             ->where('configuration_files.id', $id)
-            ->select('configuration_files.*', 'raw_data.file_data as data')
+            ->select('configuration_files.*', 'raw_data.file_data as data', 'sr.workspace_id as system_workspace_id', 'sr.user_id as system_user_id')
             ->first();
 
         if (!$config) {
             abort(404, 'Configuration file not found');
+        }
+
+        if (!$this->canAccessConfigurationRecord($actor, $config)) {
+            abort(403);
         }
 
         [$disk, $path] = $this->resolveDiskAndPathForRead($config->storage_disk ?? null, (string) ($config->file_location ?? ''));
@@ -580,14 +629,22 @@ class DashboardController extends Controller
      */
     public function downloadConfigurationFile($id)
     {
+        /** @var User $actor */
+        $actor = Auth::user();
+
         $config = DB::table('configuration_files')
             ->leftJoin('raw_data', 'configuration_files.id', '=', 'raw_data.file_id')
+            ->leftJoin('system_register as sr', 'configuration_files.system_register_id', '=', 'sr.id')
             ->where('configuration_files.id', $id)
-            ->select('configuration_files.*', 'raw_data.file_data as data')
+            ->select('configuration_files.*', 'raw_data.file_data as data', 'sr.workspace_id as system_workspace_id', 'sr.user_id as system_user_id')
             ->first();
 
         if (!$config) {
             abort(404, 'Configuration file not found');
+        }
+
+        if (!$this->canAccessConfigurationRecord($actor, $config)) {
+            abort(403);
         }
 
         [$disk, $path] = $this->resolveDiskAndPathForRead($config->storage_disk ?? null, (string) ($config->file_location ?? ''));
@@ -958,6 +1015,120 @@ class DashboardController extends Controller
     public function products()
     {
         return view('products');
+    }
+
+    private function workspaceIdsForVisibility(User $actor): array
+    {
+        if ((int) ($actor->rbac_id ?? 0) === 100) {
+            return Workspace::query()
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return $actor->workspaces()
+            ->pluck('workspaces.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function applyWorkspaceScopeToSystemsQuery($query, string $systemAlias, User $actor, ?int $selectedWorkspaceId = null): void
+    {
+        $isSuperAdmin = (int) ($actor->rbac_id ?? 0) === 100;
+        $workspaceIds = $this->workspaceIdsForVisibility($actor);
+
+        if ($selectedWorkspaceId === 0) {
+            if ($isSuperAdmin) {
+                $query->where(function ($unassignedQuery) use ($systemAlias) {
+                    $unassignedQuery->where($systemAlias . '.workspace_id', 0)
+                        ->orWhereNull($systemAlias . '.workspace_id');
+                });
+            } else {
+                $query->where($systemAlias . '.user_id', (int) $actor->id)
+                    ->where(function ($unassignedQuery) use ($systemAlias) {
+                        $unassignedQuery->where($systemAlias . '.workspace_id', 0)
+                            ->orWhereNull($systemAlias . '.workspace_id');
+                    });
+            }
+
+            return;
+        }
+
+        if ($selectedWorkspaceId !== null && $selectedWorkspaceId > 0) {
+            if (!$isSuperAdmin && !in_array($selectedWorkspaceId, $workspaceIds, true)) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $query->where($systemAlias . '.workspace_id', $selectedWorkspaceId);
+
+            return;
+        }
+
+        if ($isSuperAdmin) {
+            return;
+        }
+
+        if (empty($workspaceIds)) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereIn($systemAlias . '.workspace_id', $workspaceIds);
+    }
+
+    private function applyWorkspaceScopeToConfigurationQuery($query, string $configAlias, string $systemAlias, User $actor): void
+    {
+        if ((int) ($actor->rbac_id ?? 0) === 100) {
+            return;
+        }
+
+        $workspaceIds = $this->workspaceIdsForVisibility($actor);
+
+        $query->where(function ($scoped) use ($workspaceIds, $systemAlias, $configAlias, $actor) {
+            if (!empty($workspaceIds)) {
+                $scoped->whereIn($systemAlias . '.workspace_id', $workspaceIds);
+            }
+
+            $scoped->orWhere(function ($ownUnassigned) use ($configAlias, $actor) {
+                $ownUnassigned->where($configAlias . '.user_id', (int) $actor->id)
+                    ->where(function ($unassigned) use ($configAlias) {
+                        $unassigned->whereNull($configAlias . '.system_register_id')
+                            ->orWhere($configAlias . '.system_register_id', 0);
+                    });
+            });
+        });
+    }
+
+    private function canAccessSystemRecord(User $actor, object $system): bool
+    {
+        if ((int) ($actor->rbac_id ?? 0) === 100) {
+            return true;
+        }
+
+        $workspaceId = (int) ($system->workspace_id ?? 0);
+        if ($workspaceId > 0) {
+            return in_array($workspaceId, $this->workspaceIdsForVisibility($actor), true);
+        }
+
+        return (int) ($system->user_id ?? 0) === (int) $actor->id;
+    }
+
+    private function canAccessConfigurationRecord(User $actor, object $config): bool
+    {
+        if ((int) ($actor->rbac_id ?? 0) === 100) {
+            return true;
+        }
+
+        $workspaceId = (int) ($config->system_workspace_id ?? 0);
+        if ($workspaceId > 0) {
+            return in_array($workspaceId, $this->workspaceIdsForVisibility($actor), true);
+        }
+
+        return (int) ($config->user_id ?? 0) === (int) $actor->id
+            || (int) ($config->system_user_id ?? 0) === (int) $actor->id;
     }
 
     private function resolveDiskAndPathForRead(?string $storageDisk, string $storedLocation): array

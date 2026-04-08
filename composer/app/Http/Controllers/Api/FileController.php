@@ -405,6 +405,8 @@ class FileController extends Controller
                     'status' => $file->status,
                     'created_at' => $file->created_at,
                     'updated_at' => $file->updated_at,
+                    'USER_NAME' => $file->created_by_user_name,
+                    'USER_EMAIL' => $file->created_by_user_email,
                     'created_by' => [
                         'id' => $file->created_by_user_id,
                         'name' => $file->created_by_user_name,

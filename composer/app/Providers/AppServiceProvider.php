@@ -91,9 +91,9 @@ class AppServiceProvider extends ServiceProvider
 
                 $providerCatalog = config('sso.providers', []);
                 $providerKeys = array_keys($providerCatalog);
-                $enabledProviders = $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
-                $ssoEnabledFlag = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
                 $disableEmailRegistration = filter_var((string) AdminSetting::getValue('disable_email_registration', 'false'), FILTER_VALIDATE_BOOL);
+                $enabledProviders = $this->resolveSsoEnabledProviders($providerKeys);
+                $ssoEnabledFlag = $this->resolveSsoEnabledFlag();
 
                 $sharedSettings['ssoEnabled'] = $ssoEnabledFlag;
                 $sharedSettings['disableEmailRegistration'] = $disableEmailRegistration;
@@ -229,7 +229,49 @@ class AppServiceProvider extends ServiceProvider
             return trim((string) $runtime);
         }
 
-        return trim($default);
+        return trim((string) $default);
+    }
+
+    private function resolveSsoEnabledFlag(): bool
+    {
+        $storedValue = AdminSetting::getValue('sso_enabled', null);
+        $source = $storedValue !== null ? (string) $storedValue : $this->getEnvValue('SSO_ENABLED', 'false');
+
+        return filter_var($source, FILTER_VALIDATE_BOOL);
+    }
+
+    private function resolveSsoEnabledProviders(array $providerKeys): array
+    {
+        $storedProviders = $this->resolveStoredSsoProviders($providerKeys);
+        if (!empty($storedProviders)) {
+            return $storedProviders;
+        }
+
+        return $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
+    }
+
+    private function resolveStoredSsoProviders(array $providerKeys): array
+    {
+        $storedValue = AdminSetting::getValue('sso_enabled_providers', null);
+        if ($storedValue === null || $storedValue === '') {
+            return [];
+        }
+
+        if (is_array($storedValue)) {
+            $providers = $storedValue;
+        } else {
+            $providers = json_decode((string) $storedValue, true);
+            if (!is_array($providers)) {
+                $providers = array_map('trim', explode(',', (string) $storedValue));
+            }
+        }
+
+        return collect($providers)
+            ->map(fn (string $provider) => strtolower(trim($provider)))
+            ->filter(fn (string $provider) => in_array($provider, $providerKeys, true))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function readEnvFileValue(string $key): ?string

@@ -24,15 +24,76 @@ class AdminDashboardController extends Controller
 {
     public function index(): View
     {
+        $actor = Auth::user();
+        $visibleWorkspaceIds = $this->isAdminOnly($actor)
+            ? $this->visibleWorkspaceIdsForAdmin($actor)
+            : [];
+
         $totalUsers = User::query()
             ->where(function ($query) {
                 $query->whereNull('rbac_id')
                     ->orWhere('rbac_id', '!=', 100);
             })
+            ->when($this->isAdminOnly($actor), function ($query) use ($visibleWorkspaceIds) {
+                if (empty($visibleWorkspaceIds)) {
+                    $query->whereRaw('1 = 0');
+
+                    return;
+                }
+
+                $query->whereExists(function ($workspaceQuery) use ($visibleWorkspaceIds) {
+                    $workspaceQuery->select(DB::raw(1))
+                        ->from('workspace_user as wu')
+                        ->whereColumn('wu.user_id', 'users.id')
+                        ->whereIn('wu.workspace_id', $visibleWorkspaceIds);
+                });
+            })
             ->count();
-        $totalSystems = SystemRegister::count();
-        $totalServices = Service::count();
-        $totalConfigFiles = ConfigurationFile::count();
+
+        $totalSystems = SystemRegister::query()
+            ->when($this->isAdminOnly($actor), function ($query) use ($visibleWorkspaceIds) {
+                if (empty($visibleWorkspaceIds)) {
+                    $query->whereRaw('1 = 0');
+
+                    return;
+                }
+
+                $query->whereIn('workspace_id', $visibleWorkspaceIds);
+            })
+            ->count();
+
+        $totalServices = Service::query()
+            ->join('system_register as sr', 'sr.id', '=', 'services.system_id')
+            ->when($this->isAdminOnly($actor), function ($query) use ($visibleWorkspaceIds) {
+                if (empty($visibleWorkspaceIds)) {
+                    $query->whereRaw('1 = 0');
+
+                    return;
+                }
+
+                $query->whereIn('sr.workspace_id', $visibleWorkspaceIds);
+            })
+            ->distinct('services.service_id')
+            ->count('services.service_id');
+
+        $totalConfigFiles = ConfigurationFile::query()
+            ->leftJoin('system_register as sr', 'sr.id', '=', 'configuration_files.system_register_id')
+            ->when($this->isAdminOnly($actor), function ($query) use ($visibleWorkspaceIds, $actor) {
+                $query->where(function ($scoped) use ($visibleWorkspaceIds, $actor) {
+                    if (!empty($visibleWorkspaceIds)) {
+                        $scoped->whereIn('sr.workspace_id', $visibleWorkspaceIds);
+                    }
+
+                    $scoped->orWhere(function ($ownUnassigned) use ($actor) {
+                        $ownUnassigned->where('configuration_files.user_id', (int) $actor->id)
+                            ->where(function ($unassigned) {
+                                $unassigned->whereNull('configuration_files.system_register_id')
+                                    ->orWhere('configuration_files.system_register_id', 0);
+                            });
+                    });
+                });
+            })
+            ->count('configuration_files.id');
 
         return view('admin.dashboard', compact(
             'totalUsers',
@@ -234,8 +295,20 @@ class AdminDashboardController extends Controller
             abort(403);
         }
 
-        $systems = SystemRegister::query()
-            ->where('user_id', $user->id)
+        $sharedWorkspaceIds = $this->sharedWorkspaceIdsWithTarget($actor, $user);
+
+        $systemsQuery = SystemRegister::query()
+            ->where('user_id', $user->id);
+
+        if ($this->isAdminOnly($actor)) {
+            if (empty($sharedWorkspaceIds)) {
+                $systemsQuery->whereRaw('1 = 0');
+            } else {
+                $systemsQuery->whereIn('workspace_id', $sharedWorkspaceIds);
+            }
+        }
+
+        $systems = $systemsQuery
             ->orderByDesc('created_at')
             ->get();
 
@@ -265,10 +338,21 @@ class AdminDashboardController extends Controller
             abort(403);
         }
 
-        $system = SystemRegister::query()
+        $sharedWorkspaceIds = $this->sharedWorkspaceIdsWithTarget($actor, $user);
+
+        $systemQuery = SystemRegister::query()
             ->where('id', $systemId)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+            ->where('user_id', $user->id);
+
+        if ($this->isAdminOnly($actor)) {
+            if (empty($sharedWorkspaceIds)) {
+                abort(403);
+            }
+
+            $systemQuery->whereIn('workspace_id', $sharedWorkspaceIds);
+        }
+
+        $system = $systemQuery->firstOrFail();
 
         $services = Service::query()
             ->where('services.user_id', $user->id)
@@ -303,15 +387,35 @@ class AdminDashboardController extends Controller
             abort(403);
         }
 
+        $sharedWorkspaceIds = $this->sharedWorkspaceIdsWithTarget($actor, $user);
+
         $service = Service::query()
             ->where('service_id', $serviceId)
             ->where('user_id', $user->id)
             ->firstOrFail();
 
+        if ($this->isAdminOnly($actor)) {
+            if (empty($sharedWorkspaceIds)) {
+                abort(403);
+            }
+
+            $allowedSystem = SystemRegister::query()
+                ->where('id', $service->system_id)
+                ->whereIn('workspace_id', $sharedWorkspaceIds)
+                ->exists();
+
+            if (!$allowedSystem) {
+                abort(403);
+            }
+        }
+
         $versions = DB::table('configuration_files as cf')
             ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id')
             ->where('cf.user_id', $user->id)
             ->where('cf.service_id', $serviceId)
+            ->when($this->isAdminOnly($actor), function ($query) use ($sharedWorkspaceIds) {
+                $query->whereIn('sr.workspace_id', $sharedWorkspaceIds);
+            })
             ->select(
                 'cf.id',
                 'cf.service_id',
@@ -624,6 +728,24 @@ class AdminDashboardController extends Controller
         }
 
         return $this->canViewTargetUser($actor, $target);
+    }
+
+    private function sharedWorkspaceIdsWithTarget(User $actor, User $target): array
+    {
+        if ($this->isSuperAdmin($actor)) {
+            return $target->workspaces()
+                ->pluck('workspaces.id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        return DB::table('workspace_user as actor_wu')
+            ->join('workspace_user as target_wu', 'target_wu.workspace_id', '=', 'actor_wu.workspace_id')
+            ->where('actor_wu.user_id', $actor->id)
+            ->where('target_wu.user_id', $target->id)
+            ->pluck('actor_wu.workspace_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     private function canManageWorkspaceUsers(User $actor, Workspace $workspace): bool
@@ -1387,6 +1509,12 @@ class AdminDashboardController extends Controller
         }
 
         $this->setEnvironmentValues($envUpdates);
+        AdminSetting::putValue('sso', 'sso_enabled', $effectiveSsoEnabled ? 'true' : 'false');
+        AdminSetting::putValue('sso', 'sso_enabled_providers', $enabledProviders);
+        AdminSetting::putValue('sso', 'sso_provider_urls', $providerUrls);
+        AdminSetting::putValue('sso', 'sso_provider_client_ids', $providerClientIds);
+        AdminSetting::putValue('sso', 'sso_provider_client_secrets', $providerClientSecrets, true);
+        AdminSetting::putValue('sso', 'sso_provider_tenant_ids', $providerTenantIds);
 
         if ($effectiveSsoEnabled) {
             AdminSetting::putValue('sso', 'disable_email_registration', $request->boolean('disable_email_registration') ? 'true' : 'false');
@@ -1415,7 +1543,10 @@ class AdminDashboardController extends Controller
     private function resolveSsoSettingsFromEnvironment(array $providerOptions): array
     {
         $providerKeys = array_keys($providerOptions);
-        $enabledProviders = $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
+        $storedEnabledProviders = $this->resolveStoredSsoProviders($providerKeys);
+        $enabledProviders = !empty($storedEnabledProviders)
+            ? $storedEnabledProviders
+            : $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
 
         $providerUrls = [];
         $providerClientIds = [];
@@ -1424,13 +1555,15 @@ class AdminDashboardController extends Controller
 
         foreach ($providerKeys as $providerKey) {
             $prefix = $this->providerEnvKeyPrefix($providerKey);
-            $providerUrls[$providerKey] = $this->getEnvValue($prefix . '_URL', '');
-            $providerClientIds[$providerKey] = $this->getEnvValue($prefix . '_CLIENT_ID', '');
-            $providerClientSecrets[$providerKey] = $this->getSecretEnvValue($prefix . '_CLIENT_SECRET', '');
-            $providerTenantIds[$providerKey] = $this->getEnvValue($prefix . '_TENANT_ID', '');
+            $providerUrls[$providerKey] = $this->resolveStoredOrEnvValue('sso_provider_urls', $providerKey, $this->getEnvValue($prefix . '_URL', ''));
+            $providerClientIds[$providerKey] = $this->resolveStoredOrEnvValue('sso_provider_client_ids', $providerKey, $this->getEnvValue($prefix . '_CLIENT_ID', ''));
+            $providerClientSecrets[$providerKey] = $this->resolveStoredOrEnvSecret($providerKey, $this->getSecretEnvValue($prefix . '_CLIENT_SECRET', ''));
+            $providerTenantIds[$providerKey] = $this->resolveStoredOrEnvValue('sso_provider_tenant_ids', $providerKey, $this->getEnvValue($prefix . '_TENANT_ID', ''));
         }
 
-        $ssoEnabled = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
+        $storedSsoEnabled = AdminSetting::getValue('sso_enabled', null);
+        $ssoEnabledSource = $storedSsoEnabled !== null ? (string) $storedSsoEnabled : $this->getEnvValue('SSO_ENABLED', 'false');
+        $ssoEnabled = filter_var($ssoEnabledSource, FILTER_VALIDATE_BOOL) || !empty($enabledProviders);
 
         return [
             'enabled' => $ssoEnabled,
@@ -1455,6 +1588,64 @@ class AdminDashboardController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function resolveStoredSsoProviders(array $providerKeys): array
+    {
+        $storedValue = AdminSetting::getValue('sso_enabled_providers', null);
+        if ($storedValue === null || $storedValue === '') {
+            return [];
+        }
+
+        if (is_array($storedValue)) {
+            $providers = $storedValue;
+        } else {
+            $providers = json_decode((string) $storedValue, true);
+            if (!is_array($providers)) {
+                $providers = array_map('trim', explode(',', (string) $storedValue));
+            }
+        }
+
+        return collect($providers)
+            ->map(fn (string $provider) => strtolower(trim($provider)))
+            ->filter(fn (string $provider) => in_array($provider, $providerKeys, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function resolveStoredOrEnvValue(string $settingKey, string $providerKey, string $fallback): string
+    {
+        $storedValue = AdminSetting::getValue($settingKey, null);
+        if ($storedValue === null) {
+            return $fallback;
+        }
+
+        $decoded = $this->decodeProviderSettingValue($storedValue);
+
+        return array_key_exists($providerKey, $decoded) ? (string) $decoded[$providerKey] : '';
+    }
+
+    private function resolveStoredOrEnvSecret(string $providerKey, string $fallback): string
+    {
+        $storedValue = AdminSetting::getValue('sso_provider_client_secrets', null);
+        if ($storedValue === null) {
+            return $fallback;
+        }
+
+        $decoded = $this->decodeProviderSettingValue($storedValue);
+
+        return array_key_exists($providerKey, $decoded) ? (string) $decoded[$providerKey] : '';
+    }
+
+    private function decodeProviderSettingValue(mixed $storedValue): array
+    {
+        if (is_array($storedValue)) {
+            return $storedValue;
+        }
+
+        $decoded = json_decode((string) $storedValue, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function providerEnvKeyPrefix(string $provider): string

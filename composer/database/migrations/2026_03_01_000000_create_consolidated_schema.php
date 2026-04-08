@@ -305,6 +305,7 @@ return new class extends Migration
         if (DB::getDriverName() === 'mysql') {
             DB::statement('ALTER TABLE users AUTO_INCREMENT = 1010');
             DB::statement('ALTER TABLE services AUTO_INCREMENT = 100');
+            DB::statement('ALTER TABLE configuration_files AUTO_INCREMENT = 2010');
         }
     }
 

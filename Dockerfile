@@ -30,7 +30,6 @@ RUN cp .env.example .env && \
     sed -i "s/^APP_KEY=$/APP_KEY=base64:QQJDREVGQUJDREVGQUJDREVGQUJDREVGQUJDREVGQQ==/" .env
 
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader && \
-    php artisan key:generate --force && \
     chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000

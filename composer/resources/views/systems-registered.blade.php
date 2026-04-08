@@ -190,23 +190,39 @@
                             @endif
                         </div>
 
+                        @php
+                            $isAdminRole = in_array((int) (auth()->user()->rbac_id ?? 0), [100, 101], true);
+                            $isLocked = (bool) ($item->is_locked ?? false);
+                            $canEditSystemInfo = $isAdminRole || !$isLocked;
+                        @endphp
+
                         <!-- Created At -->
                         <div style="padding-top: 16px; border-top: 1px solid #f0f0f0; margin-bottom: 16px;">
                             <div style="font-size: 11px; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
                                 <i class="fas fa-clock" style="margin-right: 4px;"></i> Registered On
                             </div>
-                            <div style="font-size: 13px; color: #666;">
-                                {{ \Carbon\Carbon::parse($item->created_at)->format('M d, Y H:i A') }}
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                <div style="font-size: 13px; color: #666;">
+                                    {{ \Carbon\Carbon::parse($item->created_at)->format('M d, Y H:i A') }}
+                                </div>
+                                @if($canEditSystemInfo)
+                                    <a href="{{ route('systems-registered.edit', ['systemId' => $item->id]) }}"
+                                       style="background:#f3f4f6; border:1px solid #d1d5db; color:#111827; padding:8px 10px; border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s ease;"
+                                       onmouseover="this.style.background='#e5e7eb'; this.style.boxShadow='0 4px 12px rgba(17,24,39,0.12)'"
+                                       onmouseout="this.style.background='#f3f4f6'; this.style.boxShadow='none'">
+                                        <i class="fas fa-pen"></i> Edit
+                                    </a>
+                                @else
+                                    <div title="System Info is locked"
+                                         style="background:#e5e7eb; border:1px solid #d1d5db; color:#6b7280; padding:8px 10px; border-radius:8px; font-size:12px; font-weight:600; cursor:not-allowed; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                        <i class="fas fa-lock"></i> Locked
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
                         <!-- Action Buttons -->
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                            @php
-                                $isAdminRole = in_array((int) (auth()->user()->rbac_id ?? 0), [100, 101], true);
-                                $isLocked = (bool) ($item->is_locked ?? false);
-                                $canEditSystemInfo = $isAdminRole || !$isLocked;
-                            @endphp
                             @if($canEditSystemInfo)
                                 <a href="{{ route('systems-registered.edit', ['systemId' => $item->id]) }}"
                                    style="background:#f3f4f6; border:1px solid #d1d5db; color:#111827; padding:12px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s ease;"

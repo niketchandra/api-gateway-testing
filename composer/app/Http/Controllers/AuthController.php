@@ -29,9 +29,9 @@ class AuthController extends Controller
             ]);
         }
 
-        $enabledProviders = $this->resolveEnabledSsoProvidersFromEnvironment(array_keys($providerCatalog));
-        $ssoEnabledFlag = filter_var($this->getEnvValue('SSO_ENABLED', 'false'), FILTER_VALIDATE_BOOL);
-        $effectiveSsoEnabled = $ssoEnabledFlag;
+        $enabledProviders = $this->resolveSsoEnabledProviders(array_keys($providerCatalog));
+        $ssoEnabledFlag = $this->resolveSsoEnabledFlag();
+        $effectiveSsoEnabled = $ssoEnabledFlag || !empty($enabledProviders);
 
         if (!$effectiveSsoEnabled) {
             return redirect()->route('home')->withErrors([
@@ -45,7 +45,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $providerUrl = $this->getEnvValue($this->providerEnvKeyPrefix($provider) . '_URL', '');
+        $providerUrl = $this->resolveSsoProviderUrl($provider);
 
         if ($providerUrl === '') {
             return redirect()->route('home')->withErrors([
@@ -406,8 +406,8 @@ class AuthController extends Controller
         $provider = strtolower(trim($provider));
 
         $prefix = $this->providerEnvKeyPrefix($provider);
-        $clientId = $this->getEnvValue($prefix . '_CLIENT_ID', '');
-        $clientSecret = $this->getSecretEnvValue($prefix . '_CLIENT_SECRET', '');
+        $clientId = $this->resolveSsoProviderValue('sso_provider_client_ids', $provider, $this->getEnvValue($prefix . '_CLIENT_ID', ''));
+        $clientSecret = $this->resolveSsoProviderSecret($provider, $this->getSecretEnvValue($prefix . '_CLIENT_SECRET', ''));
 
         return [$clientId, $clientSecret];
     }
@@ -476,6 +476,31 @@ class AuthController extends Controller
         }
     }
 
+    private function resolveSsoProviderUrl(string $provider): string
+    {
+        return $this->resolveSsoProviderValue('sso_provider_urls', $provider, $this->getEnvValue($this->providerEnvKeyPrefix($provider) . '_URL', ''));
+    }
+
+    private function resolveSsoProviderSecret(string $provider, string $fallback): string
+    {
+        return $this->resolveSsoProviderValue('sso_provider_client_secrets', $provider, $fallback);
+    }
+
+    private function resolveSsoProviderValue(string $settingKey, string $provider, string $fallback): string
+    {
+        $storedValue = AdminSetting::getValue($settingKey, null);
+        if ($storedValue === null || $storedValue === '') {
+            return $fallback;
+        }
+
+        if (!is_array($storedValue)) {
+            $decoded = json_decode((string) $storedValue, true);
+            $storedValue = is_array($decoded) ? $decoded : [];
+        }
+
+        return trim((string) ($storedValue[$provider] ?? $fallback));
+    }
+
     private function resolveEnabledSsoProvidersFromEnvironment(array $providerKeys): array
     {
         $raw = $this->getEnvValue('SSO_ENABLED_PROVIDERS', '');
@@ -484,6 +509,48 @@ class AuthController extends Controller
         }
 
         return collect(explode(',', $raw))
+            ->map(fn (string $provider) => strtolower(trim($provider)))
+            ->filter(fn (string $provider) => in_array($provider, $providerKeys, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function resolveSsoEnabledFlag(): bool
+    {
+        $storedValue = AdminSetting::getValue('sso_enabled', null);
+        $source = $storedValue !== null ? (string) $storedValue : $this->getEnvValue('SSO_ENABLED', 'false');
+
+        return filter_var($source, FILTER_VALIDATE_BOOL);
+    }
+
+    private function resolveSsoEnabledProviders(array $providerKeys): array
+    {
+        $storedProviders = $this->resolveStoredSsoProviders($providerKeys);
+        if (!empty($storedProviders)) {
+            return $storedProviders;
+        }
+
+        return $this->resolveEnabledSsoProvidersFromEnvironment($providerKeys);
+    }
+
+    private function resolveStoredSsoProviders(array $providerKeys): array
+    {
+        $storedValue = AdminSetting::getValue('sso_enabled_providers', null);
+        if ($storedValue === null || $storedValue === '') {
+            return [];
+        }
+
+        if (is_array($storedValue)) {
+            $providers = $storedValue;
+        } else {
+            $providers = json_decode((string) $storedValue, true);
+            if (!is_array($providers)) {
+                $providers = array_map('trim', explode(',', (string) $storedValue));
+            }
+        }
+
+        return collect($providers)
             ->map(fn (string $provider) => strtolower(trim($provider)))
             ->filter(fn (string $provider) => in_array($provider, $providerKeys, true))
             ->unique()
