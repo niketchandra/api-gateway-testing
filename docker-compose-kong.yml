@@ -19,7 +19,7 @@
 
 services:
   kong:
-    image: niketchandra/atglance-kong:1.6
+    image: kong:3.6
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml

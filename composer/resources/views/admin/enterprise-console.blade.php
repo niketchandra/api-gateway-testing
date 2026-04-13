@@ -90,37 +90,40 @@
         <p style="font-size:13px; color:#6b7280; margin-bottom:14px;">View and manage all workspaces within the organization.</p>
 
         @if($workspaces && count($workspaces) > 0)
-            <table style="width:100%; border-collapse:collapse;">
-                <thead>
-                    <tr style="border-bottom:2px solid #e5e7eb;">
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Workspace ID</th>
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Name</th>
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Description</th>
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Admins</th>
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Users</th>
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Status</th>
-                        <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($workspaces as $workspace)
-                        <tr style="border-bottom:1px solid #f3f4f6;">
-                            <td style="padding:12px; font-size:13px;">{{ $workspace->id }}</td>
-                            <td style="padding:12px; font-size:13px; font-weight:500;">{{ $workspace->name }}</td>
-                            <td style="padding:12px; font-size:13px; color:#6b7280;">{{ Str::limit($workspace->description, 30) ?? '-' }}</td>
-                            <td style="padding:12px; font-size:13px;"><span style="background:#dbeafe; color:#1e3a8a; padding:4px 8px; border-radius:4px;">{{ $workspace->admins()->count() }}</span></td>
-                            <td style="padding:12px; font-size:13px;"><span style="background:#dce7f5; color:#424c68; padding:4px 8px; border-radius:4px;">{{ $workspace->regularUsers()->count() }}</span></td>
-                            <td style="padding:12px; font-size:13px;"><span style="background:{{ $workspace->status === 'active' ? '#dcfce7' : '#fee2e2' }}; color:{{ $workspace->status === 'active' ? '#166534' : '#991b1b' }}; padding:4px 8px; border-radius:4px;">{{ ucfirst($workspace->status) }}</span></td>
-                            <td style="padding:12px;"><a href="{{ route('workspace.detail', $workspace->id) }}" style="color:#2563eb; text-decoration:none; font-weight:600; font-size:13px;">Manage</a></td>
+            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid #e5e7eb;">
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Workspace ID</th>
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Name</th>
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Description</th>
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Admins</th>
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Users</th>
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Status</th>
+                            <th style="text-align:left; padding:12px; font-weight:600; color:#4b5563; font-size:13px;">Action</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach($workspaces as $workspace)
+                            <tr style="border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:12px; font-size:13px;">{{ $workspace->id }}</td>
+                                <td style="padding:12px; font-size:13px; font-weight:500;">{{ $workspace->name }}</td>
+                                <td style="padding:12px; font-size:13px; color:#6b7280;">{{ Str::limit($workspace->description, 30) ?? '-' }}</td>
+                                <td style="padding:12px; font-size:13px;"><span style="background:#dbeafe; color:#1e3a8a; padding:4px 8px; border-radius:4px;">{{ $workspace->admins()->count() }}</span></td>
+                                <td style="padding:12px; font-size:13px;"><span style="background:#dce7f5; color:#424c68; padding:4px 8px; border-radius:4px;">{{ $workspace->regularUsers()->count() }}</span></td>
+                                <td style="padding:12px; font-size:13px;"><span style="background:{{ $workspace->status === 'active' ? '#dcfce7' : '#fee2e2' }}; color:{{ $workspace->status === 'active' ? '#166534' : '#991b1b' }}; padding:4px 8px; border-radius:4px;">{{ ucfirst($workspace->status) }}</span></td>
+                                <td style="padding:12px;"><a href="{{ route('workspace.detail', $workspace->id) }}" style="color:#2563eb; text-decoration:none; font-weight:600; font-size:13px;">Manage</a></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         @else
             <div style="padding:20px; background:#f9fafb; border-radius:8px; text-align:center; color:#6b7280; font-size:13px;">
                 No workspaces found. Create workspaces by managing workspace settings.
             </div>
         @endif
     </div>
+
 </div>
 @endsection

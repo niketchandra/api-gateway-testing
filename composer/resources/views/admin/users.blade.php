@@ -137,51 +137,66 @@
     </div>
 
     <div style="background:white; border-radius:10px; padding:24px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+        <div style="margin-bottom:20px;">
+            <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:8px;">Search User or Admin</label>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="userSearchInput" placeholder="Search by name or email..." style="flex:1; border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; font-size:13px;">
+            </div>
+        </div>
+
         <div class="tab-buttons" style="margin-bottom:16px;">
-            <button type="button" class="tab-btn active" data-user-tab="users">Users</button>
-            <button type="button" class="tab-btn" data-user-tab="admins">Admin</button>
+            <button type="button" class="tab-btn active" data-user-tab="users" style="position:relative;">
+                Users
+                <span id="userCount" style="display:inline-block; margin-left:8px; background:#4f46e5; color:white; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:600;">{{ count($users) }}</span>
+            </button>
+            <button type="button" class="tab-btn" data-user-tab="admins" style="position:relative;">
+                Admin
+                <span id="adminCount" style="display:inline-block; margin-left:8px; background:#4f46e5; color:white; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:600;">{{ count($adminUsers) }}</span>
+            </button>
         </div>
 
         <div class="tab-content active" id="users-list-tab" style="display:block;">
-            <table style="width:100%; border-collapse:collapse;">
-                <thead>
-                    <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">User ID</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Name</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Email</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Systems Registered</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Services</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Configs</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Status</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($users as $item)
-                        <tr style="border-bottom:1px solid #f3f4f6;">
-                            <td style="padding:12px;">{{ $item->id }}</td>
-                            <td style="padding:12px;">{{ $item->name }}</td>
-                            <td style="padding:12px;">{{ $item->email }}</td>
-                            <td style="padding:12px;">{{ $item->system_count }}</td>
-                            <td style="padding:12px;">{{ $item->service_count }}</td>
-                            <td style="padding:12px;">{{ $item->configuration_count }}</td>
-                            <td style="padding:12px;">
-                                @php $isActive = strtolower((string) $item->status) === 'active'; @endphp
-                                <span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background:{{ $isActive ? '#dcfce7' : '#fee2e2' }}; color:{{ $isActive ? '#166534' : '#991b1b' }};">
-                                    {{ ucfirst($item->status ?? 'unknown') }}
-                                </span>
-                            </td>
-                            <td style="padding:12px;">
-                                <a href="{{ route('admin.users.profile', $item->id) }}" class="admin-user-btn admin-user-btn-sm">View User Profile</a>
-                            </td>
+            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                    <thead>
+                        <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">User ID</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Name</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Email</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Systems Registered</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Services</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Configs</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Status</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Action</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" style="padding:16px; color:#6b7280;">No users found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse($users as $item)
+                            <tr class="user-row" data-search="{{ strtolower($item->name . ' ' . $item->email) }}" style="border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:12px;">{{ $item->id }}</td>
+                                <td style="padding:12px;">{{ $item->name }}</td>
+                                <td style="padding:12px;">{{ $item->email }}</td>
+                                <td style="padding:12px;">{{ $item->system_count }}</td>
+                                <td style="padding:12px;">{{ $item->service_count }}</td>
+                                <td style="padding:12px;">{{ $item->configuration_count }}</td>
+                                <td style="padding:12px;">
+                                    @php $isActive = strtolower((string) $item->status) === 'active'; @endphp
+                                    <span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background:{{ $isActive ? '#dcfce7' : '#fee2e2' }}; color:{{ $isActive ? '#166534' : '#991b1b' }};">
+                                        {{ ucfirst($item->status ?? 'unknown') }}
+                                    </span>
+                                </td>
+                                <td style="padding:12px;">
+                                    <a href="{{ route('admin.users.profile', $item->id) }}" class="admin-user-btn admin-user-btn-sm">View User Profile</a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" style="padding:16px; color:#6b7280;">No users found.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
             <div style="margin-top:16px;">
                 {{ $users->links() }}
@@ -189,45 +204,47 @@
         </div>
 
         <div class="tab-content" id="admins-list-tab" style="display:none;">
-            <table style="width:100%; border-collapse:collapse;">
-                <thead>
-                    <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Admin ID</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Name</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Email</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Systems Registered</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Services</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Configs</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Status</th>
-                        <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($adminUsers as $item)
-                        <tr style="border-bottom:1px solid #f3f4f6;">
-                            <td style="padding:12px;">{{ $item->id }}</td>
-                            <td style="padding:12px;">{{ $item->name }}</td>
-                            <td style="padding:12px;">{{ $item->email }}</td>
-                            <td style="padding:12px;">{{ $item->system_count }}</td>
-                            <td style="padding:12px;">{{ $item->service_count }}</td>
-                            <td style="padding:12px;">{{ $item->configuration_count }}</td>
-                            <td style="padding:12px;">
-                                @php $isActive = strtolower((string) $item->status) === 'active'; @endphp
-                                <span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background:{{ $isActive ? '#dcfce7' : '#fee2e2' }}; color:{{ $isActive ? '#166534' : '#991b1b' }};">
-                                    {{ ucfirst($item->status ?? 'unknown') }}
-                                </span>
-                            </td>
-                            <td style="padding:12px;">
-                                <a href="{{ route('admin.users.profile', $item->id) }}" class="admin-user-btn admin-user-btn-sm">View User Profile</a>
-                            </td>
+            <div style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+                <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                    <thead>
+                        <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Admin ID</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Name</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Email</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Systems Registered</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Services</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Configs</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Status</th>
+                            <th style="text-align:left; padding:12px; font-size:12px; color:#6b7280;">Action</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" style="padding:16px; color:#6b7280;">No admins found.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @forelse($adminUsers as $item)
+                            <tr class="admin-row" data-search="{{ strtolower($item->name . ' ' . $item->email) }}" style="border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:12px;">{{ $item->id }}</td>
+                                <td style="padding:12px;">{{ $item->name }}</td>
+                                <td style="padding:12px;">{{ $item->email }}</td>
+                                <td style="padding:12px;">{{ $item->system_count }}</td>
+                                <td style="padding:12px;">{{ $item->service_count }}</td>
+                                <td style="padding:12px;">{{ $item->configuration_count }}</td>
+                                <td style="padding:12px;">
+                                    @php $isActive = strtolower((string) $item->status) === 'active'; @endphp
+                                    <span style="display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background:{{ $isActive ? '#dcfce7' : '#fee2e2' }}; color:{{ $isActive ? '#166534' : '#991b1b' }};">
+                                        {{ ucfirst($item->status ?? 'unknown') }}
+                                    </span>
+                                </td>
+                                <td style="padding:12px;">
+                                    <a href="{{ route('admin.users.profile', $item->id) }}" class="admin-user-btn admin-user-btn-sm">View User Profile</a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" style="padding:16px; color:#6b7280;">No admins found.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
             <div style="margin-top:16px;">
                 {{ $adminUsers->links() }}
@@ -288,6 +305,51 @@
             registerModal.addEventListener('click', function (event) {
                 if (event.target === registerModal) {
                     registerModal.style.display = 'none';
+                }
+            });
+        }
+
+        // Search functionality
+        const userSearchInput = document.getElementById('userSearchInput');
+        const userRows = document.querySelectorAll('.user-row');
+        const adminRows = document.querySelectorAll('.admin-row');
+        const userCountBadge = document.getElementById('userCount');
+        const adminCountBadge = document.getElementById('adminCount');
+
+        if (userSearchInput) {
+            userSearchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                let visibleUserCount = 0;
+                let visibleAdminCount = 0;
+
+                userRows.forEach(row => {
+                    const searchData = row.getAttribute('data-search');
+                    if (searchTerm === '' || searchData.includes(searchTerm)) {
+                        row.style.display = '';
+                        visibleUserCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                adminRows.forEach(row => {
+                    const searchData = row.getAttribute('data-search');
+                    if (searchTerm === '' || searchData.includes(searchTerm)) {
+                        row.style.display = '';
+                        visibleAdminCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                // Update count badges
+                if (userCountBadge) {
+                    userCountBadge.textContent = visibleUserCount;
+                    userCountBadge.style.background = searchTerm !== '' ? '#ef4444' : '#4f46e5';
+                }
+                if (adminCountBadge) {
+                    adminCountBadge.textContent = visibleAdminCount;
+                    adminCountBadge.style.background = searchTerm !== '' ? '#ef4444' : '#4f46e5';
                 }
             });
         }

@@ -1,8 +1,6 @@
 services:
   mysql:
     image: mysql:8.0.45
-    # env_file:
-    #   - ./.env.docker
     ports:
       - "3306:3306"
     volumes:
@@ -17,7 +15,7 @@ services:
       MYSQL_ALLOW_EMPTY_PASSWORD: yes
       MYSQL_DATABASE: atglance
       MYSQL_ROOT_HOST: '%'
-      MYSQL_ROOT_PASSWORD: root
+
   redis:
     image: redis:7-alpine
     ports:
@@ -29,7 +27,6 @@ services:
       retries: 10
 
   api:
-    build: .
     image: niketchandra/atglance-api:1.6
     command:
       - sh
@@ -39,8 +36,6 @@ services:
           composer install --no-interaction --prefer-dist --optimize-autoloader;
         fi
         php artisan serve --host=0.0.0.0 --port=8000 --no-reload
-    # env_file:
-    #   - ./.env.docker
     ports:
       - "8000:8000"
     volumes:
@@ -53,7 +48,6 @@ services:
         condition: service_healthy
 
   queue-worker:
-    build: .
     image: niketchandra/atglance-queue-worker:1.6
     working_dir: /app
     command:
@@ -64,8 +58,6 @@ services:
           composer install --no-interaction --prefer-dist --optimize-autoloader;
         fi
         php artisan queue:work redis --tries=5 --backoff=30,60,120,300,600 --timeout=60 --sleep=3 --max-jobs=1000 --verbose
-    # env_file:
-    #   - ./.env.docker
     depends_on:
       mysql:
         condition: service_healthy
@@ -78,8 +70,6 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:5.2
-    # env_file:
-    #   - ./.env.docker
     ports:
       - "8080:80"
     depends_on:
@@ -89,7 +79,22 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: 'root'
+      PMA_PASSWORD: ''
+
+  kong:
+    image: niketchandra/atglance-kong:1.6
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8002
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    ports:
+      - "8002:8002"
+      - "8001:8001"
+    volumes:
+      - ./kong:/kong/declarative
+    depends_on:
+      - api
 
 volumes:
   mysql_data:

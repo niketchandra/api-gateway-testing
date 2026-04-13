@@ -22,7 +22,7 @@
 
         .main-container {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
             background: #f5f5f5;
         }
 
@@ -33,6 +33,7 @@
             flex-direction: column;
             justify-content: flex-start;
             overflow-y: auto;
+            max-height: 100vh;
             background: #ffffff;
             box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
             border-right: 1px solid #b3b3b3;
@@ -41,7 +42,7 @@
         .content {
             width: 80%;
             padding: 0;
-            overflow-y: auto;
+            min-height: 100vh;
             background: #ffffff;
         }
 
@@ -283,12 +284,17 @@
             display: flex;
             align-items: center;
             gap: 20px;
+            flex: 1;
         }
 
         .header-logo {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #000000;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 0;
         }
 
         .header-logo i {
@@ -315,6 +321,18 @@
             font-weight: 600;
         }
 
+        .public-header {
+            flex-direction: row;
+            gap: 20px;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px 40px;
+        }
+
+        .public-header .header-nav {
+            display: none;
+        }
+
         .header-right {
             display: flex;
             gap: 20px;
@@ -337,14 +355,16 @@
             background: #ffffff;
         }
 
-        .welcome-section {
+.welcome-section {
             padding: 60px 40px;
             text-align: center;
             background: #ffffff;
         }
 
-        .welcome-title {
-            font-size: 48px;
+        .features-section,
+        .screenshots-section,
+        .contact-section {
+            order: 3;
             font-weight: bold;
             color: #333;
             margin-bottom: 20px;
@@ -492,18 +512,40 @@
         @media (max-width: 1024px) {
             .main-container {
                 flex-direction: column;
+                min-height: auto;
             }
 
             .sidebar {
                 width: 100%;
+                max-height: none;
                 height: auto;
                 border-bottom: 1px solid #b3b3b3;
+                border-right: none;
                 padding: 20px;
+                padding-top: 24px;
+                order: 2;
             }
 
             .content {
                 width: 100%;
-                height: auto;
+                min-height: auto;
+                display: contents;
+            }
+
+            .header {
+                order: 1;
+            }
+
+            .welcome-section {
+                order: 3;
+            }
+
+            .features-section,
+            .screenshots-section,
+            .contact-section,
+            #dashboardContent,
+            footer {
+                order: 4;
             }
 
             .features-grid {
@@ -513,6 +555,175 @@
             .header-nav {
                 gap: 15px;
                 font-size: 13px;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            @if(auth()->check())
+                .sidebar {
+                    padding: 16px 14px;
+                    position: fixed;
+                    left: 0;
+                    top: 0;
+                    width: 80%;
+                    max-width: 300px;
+                    height: 100vh;
+                    transform: translateX(-100%);
+                    transition: transform 0.3s ease;
+                    z-index: 1000;
+                    border-right: 1px solid #b3b3b3;
+                }
+
+                .sidebar.open {
+                    transform: translateX(0);
+                }
+
+                .sidebar-overlay {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 999;
+                }
+
+                .sidebar-overlay.open {
+                    display: block;
+                }
+
+                #sidebarToggle {
+                    display: inline-block !important;
+                }
+            @else
+                .sidebar {
+                    padding: 16px 14px;
+                    position: fixed;
+                    left: 0;
+                    top: 0;
+                    width: 70%;
+                    max-width: 450px;
+                    height: 100vh;
+                    transform: translateX(-100%);
+                    transition: transform 0.3s ease;
+                    z-index: 1000;
+                    border-right: 1px solid #b3b3b3;
+                }
+
+                .sidebar.open {
+                    transform: translateX(0);
+                }
+
+                .sidebar-overlay {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 999;
+                }
+
+                .sidebar-overlay.open {
+                    display: block;
+                }
+
+                #sidebarToggle {
+                    display: inline-block !important;
+                }
+
+                .public-header #sidebarToggle {
+                    display: inline-block;
+                    order: -1;
+                }
+            @endif
+
+            .sidebar-logo {
+                margin-bottom: 24px;
+            }
+
+            .header {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 14px;
+                padding: 16px 18px;
+            }
+
+            .header-left {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex: 1;
+                min-width: 0;
+            }
+
+            .header-logo {
+                font-size: 18px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .header-right {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                white-space: nowrap;
+                font-size: 13px;
+            }
+
+            .header-nav {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px 14px;
+                justify-content: center;
+            }
+
+            .public-header {
+                padding: 20px 16px;
+                gap: 16px;
+            }
+
+            .welcome-section,
+            .features-section,
+            .screenshots-section,
+            .contact-section {
+                padding: 32px 18px;
+            }
+
+            .welcome-title {
+                font-size: 34px;
+                line-height: 1.2;
+            }
+
+            .welcome-subtitle {
+                font-size: 16px;
+                line-height: 1.7;
+                margin-bottom: 28px;
+            }
+
+            .section-title {
+                font-size: 26px;
+                margin-bottom: 28px;
+            }
+
+            .screenshot-placeholder {
+                height: 220px;
+                font-size: 18px;
+            }
+
+            .form-container {
+                max-height: none;
+                overflow: visible;
             }
         }
 
@@ -534,6 +745,9 @@
 </head>
 <body>
     <div class="main-container">
+        <!-- SIDEBAR OVERLAY (Mobile only) -->
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
         <!-- LEFT SIDEBAR (20%) -->
         <div class="sidebar">
             <div class="sidebar-logo">
@@ -712,9 +926,48 @@
                 </div>
             </div>
 
+            <!-- Public Navigation (shown on homepage when not authenticated) -->
+            <div id="publicNav" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: none;">
+                <p style="font-size: 11px; color: #6b7280; margin-bottom: 16px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Quick Links</p>
+                <nav style="display: flex; flex-direction: column; gap: 8px;">
+                    <a href="#about" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-lightbulb" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> About
+                    </a>
+                    <a href="#features" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-rocket" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> Features
+                    </a>
+                    <a href="#faq" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-comments" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> FAQ
+                    </a>
+                    <a href="#support" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-life-ring" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> Support
+                    </a>
+                    <a href="#contact" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-paper-plane" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> Contact
+                    </a>
+                </nav>
+            </div>
+
             <!-- Dashboard Nav (shown after login) -->
             <div id="dashboardNav" class="hidden" style="margin-top: 40px; padding-top: 40px; border-top: 1px solid #e0e0e0;">
                 @php($requiresProfileSetup = auth()->check() && (!auth()->user()->dob || !auth()->user()->pin))
+                
+                @if(!empty($workspaceSelectorOptions) && count($workspaceSelectorOptions) > 0)
+                    <div style="margin-bottom: 24px;">
+                        <form method="POST" action="{{ route('workspace.select') }}" class="workspace-switcher" style="display: flex; flex-direction: column; gap: 8px;">
+                            @csrf
+                            <label for="workspace_selector" style="font-size:12px; color:#4b5563; font-weight:600; text-transform:uppercase;">Workspace</label>
+                            <select id="workspace_selector" name="workspace_id" onchange="this.form.submit()" style="min-width: auto; width: 100%;">
+                                @foreach($workspaceSelectorOptions as $workspaceOption)
+                                    <option value="{{ $workspaceOption->id }}" {{ (int) ($selectedWorkspaceId ?? 0) === (int) $workspaceOption->id ? 'selected' : '' }}>
+                                        {{ $workspaceOption->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    </div>
+                @endif
+                
                 <div style="margin-bottom: 30px;">
                     <p style="font-size: 12px; color: #999; margin-bottom: 10px; text-transform: uppercase; font-weight: 600;">Menu</p>
                     @if($requiresProfileSetup)
@@ -776,25 +1029,15 @@
             @if(auth()->check())
                 <!-- DASHBOARD HEADER -->
                 <div class="header">
-                    <div class="header-left">
+                    <div class="header-left" style="display: flex; align-items: center; gap: 15px;">
+                        <button id="sidebarToggle" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #333; padding: 8px; display: none;" title="Toggle Menu">
+                            <i class="fas fa-bars"></i>
+                        </button>
                         <div class="header-logo">
                             <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
                         </div>
                     </div>
                     <div class="header-right">
-                        @if(!empty($workspaceSelectorOptions) && count($workspaceSelectorOptions) > 0)
-                            <form method="POST" action="{{ route('workspace.select') }}" class="workspace-switcher">
-                                @csrf
-                                <label for="workspace_selector" style="font-size:12px; color:#4b5563; font-weight:600; text-transform:uppercase;">Workspace</label>
-                                <select id="workspace_selector" name="workspace_id" onchange="this.form.submit()">
-                                    @foreach($workspaceSelectorOptions as $workspaceOption)
-                                        <option value="{{ $workspaceOption->id }}" {{ (int) ($selectedWorkspaceId ?? 0) === (int) $workspaceOption->id ? 'selected' : '' }}>
-                                            {{ $workspaceOption->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </form>
-                        @endif
                         <span style="color: #333; font-weight: 500;">Hello, {{ auth()->user()->name }}!</span>
                     </div>
                 </div>
@@ -810,18 +1053,12 @@
                 </footer>
             @else
                 <!-- PUBLIC HEADER -->
-                <div class="header">
-                    <div class="header-left">
-                        <div class="header-logo">
-                            <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
-                        </div>
-                    </div>
-                    <div class="header-nav">
-                        <a href="#about">About</a>
-                        <a href="#features">Features</a>
-                        <a href="#faq">FAQ</a>
-                        <a href="#support">Support</a>
-                        <a href="#contact">Contact</a>
+                <div class="header public-header">
+                    <button id="sidebarToggle" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #333; padding: 8px; display: inline-block;" title="Toggle Menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="header-logo">
+                        <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
                     </div>
                 </div>
 
@@ -832,8 +1069,8 @@
                         @if(!empty($siteContent))
                             {{ $siteContent }}
                         @else
-                            Your comprehensive API Gateway for seamless integration and management.<br>
-                            Build, deploy, and scale your applications with confidence.
+                            AtGlance is a Configuration Files Backup as a Service platform built for Linux environments.<br>
+                            Securely back up critical server configuration files, monitor service health, and restore faster with centralized management.
                         @endif
                     </p>
                 </div>
@@ -1004,6 +1241,40 @@
                 logoutForm.submit();
             }
         }
+
+        // Sidebar toggle functionality for mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const publicNav = document.getElementById('publicNav');
+            const dashboardNav = document.getElementById('dashboardNav');
+
+            // Handle sidebar toggle for both public and dashboard pages
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('open');
+                    sidebarOverlay.classList.toggle('open');
+                });
+            }
+
+            // Close sidebar when overlay is clicked
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('open');
+                    sidebarOverlay.classList.remove('open');
+                });
+            }
+
+            // Toggle between public and dashboard navigation
+            @if(auth()->check())
+                if (publicNav) publicNav.style.display = 'none';
+                if (dashboardNav) dashboardNav.classList.remove('hidden');
+            @else
+                if (publicNav) publicNav.style.display = 'block';
+                if (dashboardNav) dashboardNav.classList.add('hidden');
+            @endif
+        });
 
         @if (session('inactive_user'))
             window.addEventListener('DOMContentLoaded', function () {
