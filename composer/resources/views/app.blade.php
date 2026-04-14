@@ -22,6 +22,7 @@
 
         .main-container {
             display: flex;
+            align-items: stretch;
             min-height: 100vh;
             background: #f5f5f5;
         }
@@ -32,8 +33,7 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
-            overflow-y: auto;
-            max-height: 100vh;
+            min-height: 100%;
             background: #ffffff;
             box-shadow: 2px 0 4px rgba(0, 0, 0, 0.06);
             border-right: 1px solid #b3b3b3;
@@ -44,6 +44,8 @@
             padding: 0;
             min-height: 100vh;
             background: #ffffff;
+            display: flex;
+            flex-direction: column;
         }
 
         .sidebar-logo {
@@ -361,16 +363,6 @@
             background: #ffffff;
         }
 
-        .features-section,
-        .screenshots-section,
-        .contact-section {
-            order: 3;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 20px;
-            color: #000000;
-        }
-
         .welcome-subtitle {
             font-size: 18px;
             color: #666;
@@ -529,23 +521,13 @@
             .content {
                 width: 100%;
                 min-height: auto;
-                display: contents;
-            }
-
-            .header {
+                display: flex;
+                flex-direction: column;
                 order: 1;
             }
 
-            .welcome-section {
-                order: 3;
-            }
-
-            .features-section,
-            .screenshots-section,
-            .contact-section,
-            #dashboardContent,
-            footer {
-                order: 4;
+            .content > footer {
+                order: 99;
             }
 
             .features-grid {
@@ -1047,9 +1029,8 @@
                     @yield('dashboard-content')
                 </div>
 
-                <footer style="margin-top:24px; padding:14px 8px; border-top:1px solid #e5e7eb; color:#6b7280; font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                    <span>AtGlance Dashboard</span>
-                    <span>Version {{ $appVersion ?? config('app.version') }}</span>
+                <footer style="margin-top:0; padding:14px 8px; border-top:1px solid #e5e7eb; color:#6b7280; font-size:12px; text-align:center;">
+                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="#" style="color: #000000;">Privacy Policy</a> | <a href="#" style="color: #000000;">Terms of Service</a></p>
                 </footer>
             @else
                 <!-- PUBLIC HEADER -->
@@ -1122,6 +1103,7 @@
                     </div>
                 </div>
 
+                {{--
                 <!-- SCREENSHOTS SECTION -->
                 <div class="screenshots-section" id="screenshots">
                     <h2 class="section-title">See It In Action</h2>
@@ -1132,7 +1114,9 @@
                         <i class="fas fa-image"></i> Analytics Screenshot
                     </div>
                 </div>
+                --}}
 
+                {{--
                 <!-- CONTACT SECTION -->
                 <div class="contact-section" id="contact">
                     <h2 class="section-title">Get in Touch</h2>
@@ -1163,6 +1147,7 @@
                         </button>
                     </form>
                 </div>
+                --}}
 
                 <!-- FOOTER -->
                 <footer style="padding: 40px; background: #f3f3f3; border-top: 1px solid #b3b3b3; text-align: center; color: #444; font-size: 14px;">
