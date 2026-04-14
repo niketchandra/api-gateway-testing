@@ -3,7 +3,63 @@
 @section('title', 'Dashboard - AtGlance')
 
 @section('dashboard-content')
-<div style="padding: 40px;">
+<style>
+    .dashboard-page {
+        padding: 40px;
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .kpi-card {
+        text-decoration: none;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #b3b3b3;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s ease;
+        display: block;
+    }
+
+    .quick-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 15px;
+    }
+
+    .recent-activity-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    @media (max-width: 992px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .quick-actions-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-page {
+            padding: 20px;
+        }
+
+        .kpi-grid,
+        .quick-actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="dashboard-page">
     <!-- Dashboard Welcome Card -->
     <div style="background: #000000; color: white; padding: 40px; border-radius: 10px; margin-bottom: 30px;">
         <h1 style="font-size: 32px; margin-bottom: 10px;">Welcome back, {{ auth()->user()->name }}! 👋</h1>
@@ -11,8 +67,8 @@
     </div>
 
     <!-- Top KPI Boxes -->
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">
-        <a href="{{ route('configuration-backups') }}" style="text-decoration: none; background: white; padding: 20px; border-radius: 10px; border-left: 4px solid #000000; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+    <div class="kpi-grid">
+        <a href="{{ route('configuration-backups') }}" class="kpi-card" style="border-left: 4px solid #000000;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
             <div style="color: #999; font-size: 13px; text-transform: uppercase; margin-bottom: 10px;">Total Configuration Backups</div>
             <div style="font-size: 28px; font-weight: bold; color: #333;">{{ $totalConfigBackups }}</div>
             <div style="font-size: 12px; margin-top: 8px; color: {{ $configChange['direction'] === 'down' ? '#f44336' : ($configChange['direction'] === 'up' ? '#4caf50' : '#666') }};">
@@ -27,7 +83,7 @@
             </div>
         </a>
 
-        <a href="{{ route('systems-registered') }}" style="text-decoration: none; background: white; padding: 20px; border-radius: 10px; border-left: 4px solid #333333; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <a href="{{ route('systems-registered') }}" class="kpi-card" style="border-left: 4px solid #333333;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
             <div style="color: #999; font-size: 13px; text-transform: uppercase; margin-bottom: 10px;">Total Systems Registered</div>
             <div style="font-size: 28px; font-weight: bold; color: #333;">{{ $totalSystemsRegistered }}</div>
             <div style="font-size: 12px; margin-top: 8px; color: {{ $systemsChange['direction'] === 'down' ? '#f44336' : ($systemsChange['direction'] === 'up' ? '#4caf50' : '#666') }};">
@@ -42,23 +98,41 @@
             </div>
         </a>
 
-        <a href="{{ route('live-service-monitoring') }}" style="text-decoration: none; background: white; padding: 20px; border-radius: 10px; border-left: 4px solid #666666; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="color: #999; font-size: 13px; text-transform: uppercase; margin-bottom: 10px;">Live Service Monitoring</div>
-            <div style="font-size: 28px; font-weight: bold; color: #333;">Coming Soon</div>
-            <div style="font-size: 12px; margin-top: 8px; color: #4caf50;"><i class="fas fa-arrow-up"></i> 12% up from last week</div>
+        <a href="{{ route('live-service-monitoring') }}" class="kpi-card" style="border-left: 4px solid #666666;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="color: #999; font-size: 13px; text-transform: uppercase; margin-bottom: 10px;">Total Services Monitored</div>
+            <div style="font-size: 28px; font-weight: bold; color: #333;">{{ $totalServicesMonitored }}</div>
+            <div style="font-size: 12px; margin-top: 8px; color: {{ $servicesChange['direction'] === 'down' ? '#f44336' : ($servicesChange['direction'] === 'up' ? '#4caf50' : '#666') }};">
+                @if($servicesChange['direction'] === 'up')
+                    <i class="fas fa-arrow-up"></i>
+                @elseif($servicesChange['direction'] === 'down')
+                    <i class="fas fa-arrow-down"></i>
+                @else
+                    <i class="fas fa-minus"></i>
+                @endif
+                {{ $servicesChange['percent'] }}% {{ $servicesChange['direction'] === 'flat' ? 'no change' : $servicesChange['direction'] }} from last week
+            </div>
         </a>
 
-        <a href="{{ route('vulnerabilities-identified') }}" style="text-decoration: none; background: white; padding: 20px; border-radius: 10px; border-left: 4px solid #4d4d4d; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <a href="{{ route('vulnerabilities-identified') }}" class="kpi-card" style="border-left: 4px solid #4d4d4d;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
             <div style="color: #999; font-size: 13px; text-transform: uppercase; margin-bottom: 10px;">Vulnerabilities Identified</div>
-            <div style="font-size: 28px; font-weight: bold; color: #333;">Coming Soon</div>
-            <div style="font-size: 12px; margin-top: 8px; color: #4caf50;"><i class="fas fa-arrow-up"></i> 12% up from last week</div>
+            <div style="font-size: 28px; font-weight: bold; color: #333;">{{ $totalPotentialVulnerabilities }}</div>
+            <div style="font-size: 12px; margin-top: 8px; color: {{ $vulnerabilitiesChange['direction'] === 'down' ? '#4caf50' : ($vulnerabilitiesChange['direction'] === 'up' ? '#f44336' : '#666') }};">
+                @if($vulnerabilitiesChange['direction'] === 'up')
+                    <i class="fas fa-arrow-up"></i>
+                @elseif($vulnerabilitiesChange['direction'] === 'down')
+                    <i class="fas fa-arrow-down"></i>
+                @else
+                    <i class="fas fa-minus"></i>
+                @endif
+                {{ $vulnerabilitiesChange['percent'] }}% {{ $vulnerabilitiesChange['direction'] === 'flat' ? 'no change' : $vulnerabilitiesChange['direction'] }} from last week
+            </div>
         </a>
     </div>
 
     <!-- Quick Actions -->
     <div style="background: white; padding: 30px; border-radius: 10px; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
         <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 20px;"><i class="fas fa-lightning-bolt"></i> Quick Actions</h2>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+        <div class="quick-actions-grid">
             <button class="quick-action-btn" style="padding: 15px; background: #000000; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <i class="fas fa-plus-circle"></i> New API
             </button>
@@ -77,7 +151,8 @@
     <!-- Recent Activity -->
     <div style="background: white; padding: 30px; border-radius: 10px; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
         <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 20px;"><i class="fas fa-history"></i> Recent Activity</h2>
-        <table style="width: 100%; border-collapse: collapse;">
+        <div class="recent-activity-table-wrap">
+        <table style="width: 100%; border-collapse: collapse; min-width: 720px;">
             <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid #e0e0e0;">
                     <th style="padding: 15px; text-align: left; color: #666; font-weight: 600; font-size: 12px;">Timestamp</th>
@@ -113,6 +188,7 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
 
     <!-- Performance Chart Placeholder -->

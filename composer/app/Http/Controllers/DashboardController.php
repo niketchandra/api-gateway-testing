@@ -69,7 +69,7 @@ class DashboardController extends Controller
     /**
      * Show the dashboard view
      */
-    public function index()
+    public function index(Request $request)
     {
         /** @var User $actor */
         $actor = Auth::user();
@@ -83,11 +83,15 @@ class DashboardController extends Controller
         $previousWeekStart = $currentWeekStart->copy()->subWeek();
         $previousWeekEnd = $currentWeekStart->copy()->subSecond();
 
+        $selectedWorkspaceId = $request->session()->has('selected_workspace_id')
+            ? (int) $request->session()->get('selected_workspace_id')
+            : null;
+
         $workspaceIds = $this->workspaceIdsForVisibility($actor);
 
         $configBaseQuery = DB::table('configuration_files as cf')
             ->leftJoin('system_register as sr', 'cf.system_register_id', '=', 'sr.id');
-        $this->applyWorkspaceScopeToConfigurationQuery($configBaseQuery, 'cf', 'sr', $actor);
+        $this->applyWorkspaceScopeToConfigurationQuery($configBaseQuery, 'cf', 'sr', $actor, $selectedWorkspaceId);
 
         $totalConfigBackups = (clone $configBaseQuery)->count('cf.id');
         $currentWeekConfigBackups = (clone $configBaseQuery)
@@ -98,11 +102,7 @@ class DashboardController extends Controller
             ->count('cf.id');
 
         $systemsBaseQuery = DB::table('system_register as sr');
-        if (empty($workspaceIds)) {
-            $systemsBaseQuery->whereRaw('1 = 0');
-        } else {
-            $systemsBaseQuery->whereIn('sr.workspace_id', $workspaceIds);
-        }
+        $this->applyWorkspaceScopeToSystemsQuery($systemsBaseQuery, 'sr', $actor, $selectedWorkspaceId);
 
         $totalSystemsRegistered = (clone $systemsBaseQuery)->count('sr.id');
         $currentWeekSystemsRegistered = (clone $systemsBaseQuery)
@@ -115,11 +115,46 @@ class DashboardController extends Controller
         $configChange = $this->calculateWeeklyChange($currentWeekConfigBackups, $previousWeekConfigBackups);
         $systemsChange = $this->calculateWeeklyChange($currentWeekSystemsRegistered, $previousWeekSystemsRegistered);
 
+        $servicesBaseQuery = DB::table('services as s')
+            ->join('system_register as sr', 's.system_id', '=', 'sr.id');
+        $this->applyWorkspaceScopeToSystemsQuery($servicesBaseQuery, 'sr', $actor, $selectedWorkspaceId);
+
+        $totalServicesMonitored = (clone $servicesBaseQuery)->count('s.service_id');
+        $currentWeekServicesMonitored = (clone $servicesBaseQuery)
+            ->whereBetween('s.created_at', [$currentWeekStart, $now])
+            ->count('s.service_id');
+        $previousWeekServicesMonitored = (clone $servicesBaseQuery)
+            ->whereBetween('s.created_at', [$previousWeekStart, $previousWeekEnd])
+            ->count('s.service_id');
+
+        $isSuperAdmin = (int) ($actor->rbac_id ?? 0) === 100;
+        $alertsBaseQuery = DB::table('activity_logs')
+            ->where('status_code', '>=', 400);
+
+        if (!$isSuperAdmin) {
+            $alertsBaseQuery->where('user_id', (int) $actor->id);
+        }
+
+        $totalPotentialVulnerabilities = (clone $alertsBaseQuery)->count('id');
+        $currentWeekPotentialVulnerabilities = (clone $alertsBaseQuery)
+            ->whereBetween('created_at', [$currentWeekStart, $now])
+            ->count('id');
+        $previousWeekPotentialVulnerabilities = (clone $alertsBaseQuery)
+            ->whereBetween('created_at', [$previousWeekStart, $previousWeekEnd])
+            ->count('id');
+
+        $servicesChange = $this->calculateWeeklyChange($currentWeekServicesMonitored, $previousWeekServicesMonitored);
+        $vulnerabilitiesChange = $this->calculateWeeklyChange($currentWeekPotentialVulnerabilities, $previousWeekPotentialVulnerabilities);
+
         return view('dashboard', [
             'totalConfigBackups' => $totalConfigBackups,
             'totalSystemsRegistered' => $totalSystemsRegistered,
+            'totalServicesMonitored' => $totalServicesMonitored,
+            'totalPotentialVulnerabilities' => $totalPotentialVulnerabilities,
             'configChange' => $configChange,
             'systemsChange' => $systemsChange,
+            'servicesChange' => $servicesChange,
+            'vulnerabilitiesChange' => $vulnerabilitiesChange,
         ]);
     }
 
@@ -1079,13 +1114,43 @@ class DashboardController extends Controller
         $query->whereIn($systemAlias . '.workspace_id', $workspaceIds);
     }
 
-    private function applyWorkspaceScopeToConfigurationQuery($query, string $configAlias, string $systemAlias, User $actor): void
+    private function applyWorkspaceScopeToConfigurationQuery($query, string $configAlias, string $systemAlias, User $actor, ?int $selectedWorkspaceId = null): void
     {
-        if ((int) ($actor->rbac_id ?? 0) === 100) {
+        $isSuperAdmin = (int) ($actor->rbac_id ?? 0) === 100;
+        $workspaceIds = $this->workspaceIdsForVisibility($actor);
+
+        if ($selectedWorkspaceId === 0) {
+            if ($isSuperAdmin) {
+                $query->where(function ($unassignedQuery) use ($systemAlias) {
+                    $unassignedQuery->where($systemAlias . '.workspace_id', 0)
+                        ->orWhereNull($systemAlias . '.workspace_id');
+                });
+            } else {
+                $query->where($configAlias . '.user_id', (int) $actor->id)
+                    ->where(function ($unassignedQuery) use ($configAlias) {
+                        $unassignedQuery->where($configAlias . '.system_register_id', 0)
+                            ->orWhereNull($configAlias . '.system_register_id');
+                    });
+            }
+
             return;
         }
 
-        $workspaceIds = $this->workspaceIdsForVisibility($actor);
+        if ($selectedWorkspaceId !== null && $selectedWorkspaceId > 0) {
+            if (!$isSuperAdmin && !in_array($selectedWorkspaceId, $workspaceIds, true)) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $query->where($systemAlias . '.workspace_id', $selectedWorkspaceId);
+
+            return;
+        }
+
+        if ($isSuperAdmin) {
+            return;
+        }
 
         $query->where(function ($scoped) use ($workspaceIds, $systemAlias, $configAlias, $actor) {
             if (!empty($workspaceIds)) {
