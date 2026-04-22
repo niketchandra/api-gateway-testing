@@ -13,15 +13,6 @@ services:
           - POST
           - PUT
           - DELETE
-      - name: products-route
-        paths:
-          - /products
-        strip_path: false
-        methods:
-          - GET
-          - POST
-          - PUT
-          - DELETE
     plugins:
       - name: rate-limiting
         config:

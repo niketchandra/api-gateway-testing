@@ -3,7 +3,6 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\PatTokenController;
-use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SystemRegisterController;
 use App\Http\Controllers\Api\TokenValidationController;
@@ -23,7 +22,6 @@ Route::post('/auth/pat-tokens', [PatTokenController::class, 'store'])->middlewar
 Route::get('/auth/pat-tokens', [PatTokenController::class, 'index'])->middleware('auth.session');
 
 Route::apiResource('users', UserController::class);
-Route::apiResource('products', ProductController::class);
 
 // File operations - require PAT token only (permanent token with atgla- prefix)
 Route::post('/files/upload', [FileController::class, 'upload'])->middleware('auth.pat');
