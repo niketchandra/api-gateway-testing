@@ -26,8 +26,14 @@ COPY composer /app
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-RUN cp .env.example .env && \
-    sed -i "s/^APP_KEY=$/APP_KEY=base64:QQJDREVGQUJDREVGQUJDREVGQUJDREVGQUJDREVGQQ==/" .env
+RUN if [ -f .env ]; then \
+            echo "Using supplied .env file"; \
+        else \
+            cp .env.example .env; \
+        fi && \
+        sed -i "s/^APP_KEY=$/APP_KEY=base64:QQJDREVGQUJDREVGQUJDREVGQUJDREVGQUJDREVGQQ==/" .env || true
+
+RUN test -f .env && test -f .env.example
 
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader && \
     chmod -R 775 storage bootstrap/cache
