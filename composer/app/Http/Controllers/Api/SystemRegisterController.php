@@ -365,6 +365,13 @@ class SystemRegisterController extends Controller
         if ($errorResponse) {
             return $errorResponse;
         }
+
+        // Only admin and superadmin users can perform force operations
+        if (!$actor->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Only admin and superadmin users can perform this action.'
+            ], 403);
+        }
         
         // Find the system by ID
         $system = SystemRegister::find($systemId);
@@ -470,6 +477,13 @@ class SystemRegisterController extends Controller
         [$actor, $errorResponse] = $this->resolveForceActor($request);
         if ($errorResponse) {
             return $errorResponse;
+        }
+
+        // Only admin and superadmin users can perform force operations
+        if (!$actor->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Only admin and superadmin users can perform this action.'
+            ], 403);
         }
         
         // Find the system by ID
