@@ -129,7 +129,7 @@
         </a>
     </div>
 
-    <!-- Quick Actions -->
+    {{-- Quick Actions
     <div style="background: white; padding: 30px; border-radius: 10px; border: 1px solid #b3b3b3; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
         <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 20px;"><i class="fas fa-lightning-bolt"></i> Quick Actions</h2>
         <div class="quick-actions-grid">
@@ -198,5 +198,6 @@
             <i class="fas fa-chart-area"></i> Chart will be displayed here
         </div>
     </div>
+    --}}
 </div>
 @endsection

@@ -30,12 +30,14 @@
         <button class="settings-tab" onclick="switchSettingsTab('security', this)">
             <i class="fas fa-shield-alt"></i> Security
         </button>
+        {{--
         <button class="settings-tab" onclick="switchSettingsTab('notifications', this)">
             <i class="fas fa-bell"></i> Notifications
         </button>
         <button class="settings-tab" onclick="switchSettingsTab('billing', this)">
             <i class="fas fa-credit-card"></i> Billing
         </button>
+        --}}
         <button class="settings-tab" onclick="switchSettingsTab('api', this)">
             <i class="fas fa-plug"></i> API Keys
         </button>
@@ -397,7 +399,7 @@
         </div>
     </div>
 
-    <!-- NOTIFICATIONS -->
+    {{-- NOTIFICATIONS
     <div class="settings-content" id="notifications">
         <div class="settings-card">
             <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 25px;"><i class="fas fa-bell"></i> Notification Settings</h2>
@@ -491,6 +493,7 @@
             </table>
         </div>
     </div>
+    --}}
 
     <!-- API KEYS -->
     <div class="settings-content" id="api">

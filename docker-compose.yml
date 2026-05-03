@@ -30,7 +30,11 @@ services:
 
   api:
     build: .
-    image: niketchandra/atglance-api:1.6
+    image: atglance-api
+    restart: unless-stopped
+    environment:
+      APP_URL: http://localhost
+      APP_FORCE_HTTPS: "fasle"
     command:
       - sh
       - -lc

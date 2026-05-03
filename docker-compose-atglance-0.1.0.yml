@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:5.7
-    container_name: atglance-mysql
+    container_name: atglance-db-layer
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -20,6 +20,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: atglance-cache-layer
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -30,12 +31,12 @@ services:
       retries: 10
 
   api:
-    image: atglance/ee-console-app:0.1.0
-    container_name: atglance-mangement-console
+    image: atglance/ce-console-app:0.1.0
+    container_name: atglance-management-console
     restart: unless-stopped
     environment:
       APP_URL: https://inducer.atglance.live/
-    #   APP_FORCE_HTTPS: "true"
+      APP_FORCE_HTTPS: "true"
     #   DB_CONNECTION: mysql
     #   DB_HOST: mysql
     #   DB_PORT: 3306
@@ -63,7 +64,8 @@ services:
         condition: service_healthy
 
   queue-worker:
-    image: atglance/ee-queue-worker:0.1.0
+    image: atglance/ce-queue-worker:0.1.0
+    container_name: atglance-queue-layer
     restart: unless-stopped
     working_dir: /app
     environment:
@@ -88,7 +90,8 @@ services:
     volumes:
       - composer_vendor:/app/vendor
   kong:
-    image: atglance/ee-kong-app:0.1.0
+    image: atglance/ce-gateway-app:0.1.0
+    container_name: atglance-Gateway-layer
     restart: unless-stopped
     environment:
       KONG_DATABASE: "off"

@@ -43,6 +43,26 @@
             font-family: 'Sora', ui-sans-serif, system-ui;
             color: var(--ink);
         }
+
+        .installer-layout {
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 1024px) {
+            .installer-layout {
+                    grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+            }
+        }
+
+        .installer-primary-button {
+            background: #512fc9;
+            color: #ffffff;
+            transition: background-color 0.2s ease;
+        }
+
+        .installer-primary-button:hover {
+            background: #4326a8;
+        }
     </style>
 </head>
 <body class="min-h-screen overflow-x-hidden bg-white">
@@ -51,7 +71,7 @@
     </div>
 
     <div class="mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-5 py-8 sm:px-8">
-        <div class="grid w-full gap-6 rounded-3xl border border-white/20 bg-white/90 p-4 shadow-glow backdrop-blur-xl sm:p-6 lg:grid-cols-2">
+        <div class="installer-layout grid w-full gap-6 rounded-3xl border border-white/20 bg-white/90 p-4 shadow-glow backdrop-blur-xl sm:p-6">
             <div class="order-2 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 lg:order-2">
                 <div class="mb-6 flex items-center gap-4">
                     <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-lg font-extrabold text-white shadow-lg">
@@ -91,7 +111,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
+                       <div>
                             <label for="app_ip" class="block text-sm font-semibold text-slate-800">IP Address</label>
                             <input
                                 id="app_ip"
@@ -172,9 +192,7 @@
 
                     <button
                         type="submit"
-                        class="w-full rounded-xl bg-black px-4 py-3 text-sm font-bold uppercase tracking-wider text-white transition"
-                        onmouseover="this.style.background='#555555'"
-                        onmouseout="this.style.background='#000000'"
+                        class="installer-primary-button w-full rounded-xl px-4 py-3 text-sm font-bold uppercase tracking-wider transition"
                     >
                         Next - Install Application
                     </button>
@@ -190,22 +208,22 @@
 
                 <h2 class="mt-5 text-xl font-extrabold text-slate-900 sm:text-2xl">AtGlance Platform</h2>
                 <p class="mt-3 text-sm leading-relaxed text-slate-700 sm:text-base">
-                    AtGlance protects Linux configuration files and helps your team recover quickly with reliable backups and centralized monitoring.
+                    AtGlance is an operations platform built for teams who run critical infrastructure and want the safety of centralized governance without giving up the control of self‑hosting.
                 </p>
 
                 <div class="mt-6 rounded-xl border border-slate-200 bg-white p-4">
                     <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Public Links</h3>
                     <ul class="mt-3 space-y-2 text-sm text-slate-700">
-                        <li><a href="https://theatglance.com" target="_blank" class="font-medium text-black hover:underline">Website</a></li>
-                        <li><a href="https://theatglance.com/docs" target="_blank" class="font-medium text-black hover:underline">Documentation</a></li>
-                        <li><a href="https://theatglance.com/contact" target="_blank" class="font-medium text-black hover:underline">Contact Page</a></li>
+                        <li><a href="https://atglance.live" target="_blank" class="font-medium text-black hover:underline">Website</a></li>
+                        <li><a href="https://atglance.live/docs" target="_blank" class="font-medium text-black hover:underline">Documentation</a></li>
+                        <li><a href="https://atglance.live/contact" target="_blank" class="font-medium text-black hover:underline">Contact Page</a></li>
                     </ul>
                 </div>
 
                 <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
                     <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Contact</h3>
                     <p class="mt-2 text-sm text-slate-700">
-                        <a href="mailto:info@theatglance.com" class="font-medium text-black hover:underline">info@theatglance.com</a>
+                        <a href="mailto:info@atglance.live" class="font-medium text-black hover:underline">info@atglance.live</a>
                     </p>
                 </div>
 
@@ -230,11 +248,16 @@
                                 class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-black focus:ring-2 focus:ring-slate-200"
                             ></textarea>
                         </div>
-                        <button type="button" class="w-full rounded-lg bg-black px-3 py-2 text-sm font-semibold text-white">Submit Support Request</button>
+                        <button type="button" class="installer-primary-button w-full rounded-lg px-3 py-2 text-sm font-semibold">Submit Support Request</button>
                     </form>
                 </div>
 
                 <footer class="mt-auto pt-6 text-xs text-slate-500">
+                    <p class="mb-1">
+                        <a href="https://atglance.live/privacy" target="_blank" rel="noopener noreferrer" class="font-medium text-black hover:underline">Privacy Policy</a>
+                        <span class="mx-2 text-slate-400">|</span>
+                        <a href="https://atglance.live/terms" target="_blank" rel="noopener noreferrer" class="font-medium text-black hover:underline">Terms of Service</a>
+                    </p>
                     <p>Version {{ config('app.version', 'v1.0.0') }}</p>
                     <p class="mt-1">All rights reserved.</p>
                 </footer>

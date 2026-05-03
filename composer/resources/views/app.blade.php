@@ -100,6 +100,53 @@
             opacity: 0.7;
         }
 
+        .tab-buttons .tab-btn,
+        .tab-buttons .tab-btn:hover,
+        .tab-buttons .tab-btn:focus,
+        .tab-buttons .tab-btn:active {
+            background: none !important;
+            border-color: transparent !important;
+            color: #999999 !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .tab-buttons .tab-btn.active {
+            color: #000000 !important;
+            border-bottom-color: #000000 !important;
+        }
+
+        .settings-tab,
+        .settings-tab:hover,
+        .settings-tab:focus,
+        .settings-tab:active {
+            background: none !important;
+            border-color: transparent !important;
+            color: #666666 !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .settings-tab.active {
+            color: #555555 !important;
+            border-bottom-color: #8f8f8f !important;
+        }
+
+        #sidebarToggle,
+        #sidebarToggle:hover,
+        #sidebarToggle:focus,
+        #sidebarToggle:active {
+            background: none !important;
+            border: none !important;
+            color: inherit !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        #sidebarToggle i {
+            color: inherit !important;
+        }
+
         .tab-content {
             display: none;
         }
@@ -194,7 +241,31 @@
             transform: translateY(-2px);
         }
 
-        /* Global button hover color across app pages */
+        /* Global button color across app pages */
+        button,
+        .btn,
+        .btn-primary,
+        .btn-secondary,
+        .btn-danger,
+        .btn-save,
+        .action-btn,
+        .action-btn-primary,
+        .action-btn-secondary,
+        .filter-btn,
+        .settings-tab-btn,
+        .profile-btn,
+        .admin-action-btn,
+        .admin-user-btn,
+        .quick-action-btn,
+        .user-profile-btn,
+        .tab-btn,
+        .btn-sso,
+        a[style*='cursor: pointer'] {
+            background: #512fc9 !important;
+            border-color: #512fc9 !important;
+            color: #ffffff !important;
+        }
+
         button:hover,
         .btn:hover,
         .btn-primary:hover,
@@ -202,13 +273,20 @@
         .btn-danger:hover,
         .btn-save:hover,
         .action-btn:hover,
+        .action-btn-primary:hover,
+        .action-btn-secondary:hover,
         .filter-btn:hover,
         .settings-tab-btn:hover,
         .profile-btn:hover,
         .admin-action-btn:hover,
+        .admin-user-btn:hover,
+        .quick-action-btn:hover,
+        .user-profile-btn:hover,
+        .tab-btn:hover,
+        .btn-sso:hover,
         a[style*='cursor: pointer']:hover {
-            background: #555555 !important;
-            border-color: #555555 !important;
+            background: #4326a8 !important;
+            border-color: #4326a8 !important;
             color: #ffffff !important;
         }
 
@@ -726,6 +804,17 @@
     </style>
 </head>
 <body>
+    @php
+        $installerFile = storage_path('app/installer/installed.json');
+        $orgName = null;
+        if (file_exists($installerFile)) {
+            $data = @json_decode(file_get_contents($installerFile), true);
+            if (!empty($data['organization_name'])) {
+                $orgName = trim($data['organization_name']);
+            }
+        }
+        $headerSuffix = $orgName ?: 'Configuration Backup Service';
+    @endphp
     <div class="main-container">
         <!-- SIDEBAR OVERLAY (Mobile only) -->
         <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -733,7 +822,7 @@
         <!-- LEFT SIDEBAR (20%) -->
         <div class="sidebar">
             <div class="sidebar-logo">
-                <img src="{{ !empty($siteLogoUrl) ? $siteLogoUrl : asset('branding/atglance-logo.png') }}" alt="AtGlance Logo" style="max-width: 250px; max-height: 100px; object-fit: contain;">
+                <img src="{{ !empty($siteLogoUrl) ? $siteLogoUrl : asset('branding/atglance-logo-cc.png') }}" alt="AtGlance Logo" style="max-width: 250px; max-height: 100px; object-fit: contain;">
             </div>
 
             <div class="form-container" id="authForm">
@@ -912,20 +1001,20 @@
             <div id="publicNav" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: none;">
                 <p style="font-size: 11px; color: #6b7280; margin-bottom: 16px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Quick Links</p>
                 <nav style="display: flex; flex-direction: column; gap: 8px;">
-                    <a href="#about" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                    <a href="https://atglance.live/about" target="_blank" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
                         <i class="fas fa-lightbulb" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> About
                     </a>
-                    <a href="#features" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                    <a href="https://atglance.live/architecture" target="_blank" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
                         <i class="fas fa-rocket" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> Features
                     </a>
-                    <a href="#faq" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                    <a href="https://atglance.live/faq" target="_blank" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
                         <i class="fas fa-comments" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> FAQ
                     </a>
-                    <a href="#support" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                    <a href="https://atglance.live/docs" target="_blank" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
                         <i class="fas fa-life-ring" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> Support
                     </a>
-                    <a href="#contact" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
-                        <i class="fas fa-paper-plane" style="color: #444444; font-size: 16px; width: 20px; text-align: center;"></i> Contact
+                    <a href="https://atglance.live/contact" target="_blank" class="nav-link" style="padding: 12px 14px; color: #1f2937; text-decoration: none; border-radius: 8px; transition: all 0.3s ease; background: #f9fafb; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; font-weight： 500; font-size: 14px;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#d1d5db'; this.style.transform='translateX(4px)'; this.style.boxShadow='0 2px_8px_rgba(0,0,0,0.08)';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb'; this.style.transform='translateX(0)'; this.style.boxShadow='none';">
+                        <i class="fas fa-paper-plane" style="color: #444444; font-size： 16px； width： 20px； text-align： center;"></i> Contact
                     </a>
                 </nav>
             </div>
@@ -1012,11 +1101,11 @@
                 <!-- DASHBOARD HEADER -->
                 <div class="header">
                     <div class="header-left" style="display: flex; align-items: center; gap: 15px;">
-                        <button id="sidebarToggle" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #333; padding: 8px; display: none;" title="Toggle Menu">
+                        <button id="sidebarToggle" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px; display: none;" title="Toggle Menu">
                             <i class="fas fa-bars"></i>
                         </button>
                         <div class="header-logo">
-                            <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
+                            <i class="fas fa-gate"></i> {{ $headerSuffix }} 
                         </div>
                     </div>
                     <div class="header-right">
@@ -1030,16 +1119,16 @@
                 </div>
 
                 <footer style="margin-top:0; padding:14px 8px; border-top:1px solid #e5e7eb; color:#6b7280; font-size:12px; text-align:center;">
-                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="#" style="color: #000000;">Privacy Policy</a> | <a href="#" style="color: #000000;">Terms of Service</a></p>
+                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="https://atglance.live/privacy" style="color: #000000;">Privacy Policy</a> | <a href="https://atglance.live/terms" style="color: #000000;">Terms of Service</a></p>
                 </footer>
             @else
                 <!-- PUBLIC HEADER -->
                 <div class="header public-header">
-                    <button id="sidebarToggle" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #333; padding: 8px; display: inline-block;" title="Toggle Menu">
+                    <button id="sidebarToggle" type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px; display: inline-block;" title="Toggle Menu">
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="header-logo">
-                        <i class="fas fa-gate"></i> AtGlance - Configuration Backup Service
+                        <i class="fas fa-gate"></i>  {{ $headerSuffix }}
                     </div>
                 </div>
 
@@ -1151,7 +1240,7 @@
 
                 <!-- FOOTER -->
                 <footer style="padding: 40px; background: #f3f3f3; border-top: 1px solid #b3b3b3; text-align: center; color: #444; font-size: 14px;">
-                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="#" style="color: #000000;">Privacy Policy</a> | <a href="#" style="color: #000000;">Terms of Service</a></p>
+                    <p>&copy; 2026 AtGlance. All rights reserved. | <a href="https://atglance.live/privacy" style="color: #000000;">Privacy Policy</a> | <a href="https://atglance.live/terms" style="color: #000000;">Terms of Service</a></p>
                 </footer>
             @endif
         </div>

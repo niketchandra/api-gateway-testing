@@ -64,7 +64,7 @@ Route::middleware('app.installed')->group(function () {
         Route::post('/password/update', [DashboardController::class, 'updatePassword'])->name('password.update');
         Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
         Route::post('/profile/setup', [DashboardController::class, 'updateProfileSetup'])->name('profile.update');
-        Route::get('/products', [DashboardController::class, 'products'])->name('products');
+        // Route::get('/products', [DashboardController::class, 'products'])->name('products');
 
         Route::middleware('admin.role')->prefix('admin')->group(function () {
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');

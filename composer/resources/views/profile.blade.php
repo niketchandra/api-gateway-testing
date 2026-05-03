@@ -206,6 +206,7 @@
 
     </style>
 
+    {{--
     <!-- Overview Stats -->
     <div class="profile-section">
         <h2><i class="fas fa-bar-chart"></i> Overview</h2>
@@ -228,6 +229,7 @@
             </div>
         </div>
     </div>
+    --}}
 
     <!-- Account Information -->
     <div class="profile-section">
@@ -263,7 +265,7 @@
         </div>
     </div>
 
-    <!-- Recent Activity -->
+    {{-- Recent Activity
     <div class="profile-section">
         <h2><i class="fas fa-history"></i> Recent Activity</h2>
 
@@ -292,7 +294,9 @@
             <div class="event">Updated notification preferences</div>
         </div>
     </div>
+    --}}
 
+    {{--
     <!-- Security & Privacy -->
     <div class="profile-section">
         <h2><i class="fas fa-shield-alt"></i> Security & Privacy</h2>
@@ -323,7 +327,9 @@
             </div>
         </div>
     </div>
+    --}}
 
+    {{--
     <!-- Preferences -->
     <div class="profile-section">
         <h2><i class="fas fa-cogs"></i> Preferences</h2>
@@ -349,6 +355,7 @@
             </a>
         </div>
     </div>
+    --}}
     @endif
 </div>
 

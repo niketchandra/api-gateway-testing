@@ -36,9 +36,11 @@
     <div class="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-5 py-8 sm:px-8">
         <div class="w-full max-w-4xl rounded-3xl border border-cccccc bg-white p-6 shadow-lg sm:p-10">
             <div class="mb-6 flex items-center gap-4">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-lg font-extrabold text-white shadow-lg">
-                    AG
-                </div>
+                <img
+                    src="{{ asset('branding/atglance-logo.png') }}"
+                    alt="AtGlance logo"
+                    class="h-14 w-auto object-contain"
+                >
                 <div>
                     <h1 class="text-2xl font-extrabold text-black sm:text-3xl">Installation Completed</h1>
                 </div>
@@ -90,9 +92,10 @@
 
             <a
                 href="{{ route('home') }}"
-                class="mt-6 inline-flex items-center rounded-xl bg-black px-5 py-3 text-sm font-bold uppercase tracking-wider text-white transition"
-                onmouseover="this.style.background='#555555'"
-                onmouseout="this.style.background='#000000'"
+                class="mt-6 inline-flex items-center rounded-xl px-5 py-3 text-sm font-bold uppercase tracking-wider text-white transition"
+                style="background:#512fc9"
+                onmouseover="this.style.background='#4326a8'"
+                onmouseout="this.style.background='#512fc9'"
             >
                 Go to Login
             </a>
