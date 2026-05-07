@@ -945,6 +945,8 @@ class AdminDashboardController extends Controller
             'aiProviderType' => AdminSetting::getValue('ai_provider_type', 'cloud'),
             'aiProvider' => AdminSetting::getValue('ai_provider', 'chatgpt'),
             'aiApiKeyMap' => $this->getJsonSetting('ai_api_keys', []),
+            'aiOllamaBaseUrl' => AdminSetting::getValue('ai_ollama_base_url', 'http://localhost:11434'),
+            'aiOllamaModel' => AdminSetting::getValue('ai_ollama_model', 'mistral'),
             'byosEnabled' => $this->isFeatureEnabledSetting('byos_enabled'),
             'byosBaseUrl' => AdminSetting::getValue('byos_base_url', ''),
             'byosModel' => AdminSetting::getValue('byos_model', ''),

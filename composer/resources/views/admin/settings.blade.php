@@ -464,6 +464,8 @@
             $selectedCloudProvider = old('ai_provider', $aiProvider ?? 'chatgpt');
             $apiKeyMap = old('ai_api_keys', $aiApiKeyMap ?? []);
             $byosEnabledState = old('byos_enabled', ($byosEnabled ?? false) ? '1' : '0');
+            $ollamaBaseUrl = old('ai_ollama_base_url', $aiOllamaBaseUrl ?? 'http://localhost:11434');
+            $ollamaModel = old('ai_ollama_model', $aiOllamaModel ?? 'mistral');
         @endphp
 
         <form method="POST" action="{{ route('admin.settings.ai', ['tab' => 'ai']) }}" id="ai-settings-form">
@@ -500,12 +502,12 @@
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                             <div>
                                 <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Ollama Base URL</label>
-                                <input type="url" name="ai_ollama_base_url" value="{{ old('ai_ollama_base_url', $aiApiKeyMap['ollama_base_url'] ?? '') }}" placeholder="http://localhost:11434" style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                                <input type="url" name="ai_ollama_base_url" value="{{ $ollamaBaseUrl }}" placeholder="http://localhost:11434" style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
                                 <div style="font-size:12px; color:#6b7280; margin-top:4px;">e.g., http://localhost:11434</div>
                             </div>
                             <div>
                                 <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:6px;">Ollama Model</label>
-                                <input type="text" name="ai_ollama_model" value="{{ old('ai_ollama_model', $aiApiKeyMap['ollama_model'] ?? '') }}" placeholder="mistral, neural-chat, etc." style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
+                                <input type="text" name="ai_ollama_model" value="{{ $ollamaModel }}" placeholder="mistral, neural-chat, etc." style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;">
                                 <div style="font-size:12px; color:#6b7280; margin-top:4px;">e.g., mistral, llama2, neural-chat</div>
                             </div>
                         </div>
