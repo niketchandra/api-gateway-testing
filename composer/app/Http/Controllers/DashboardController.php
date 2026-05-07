@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminSetting;
 use App\Models\SystemRegister;
 use App\Models\Workspace;
+use App\Models\ConfigurationFile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\PatToken;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +18,9 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\RequestException;
 
 class DashboardController extends Controller
 {
@@ -715,6 +721,115 @@ class DashboardController extends Controller
     }
 
     /**
+     * Audit configuration file with AI
+     */
+    public function auditConfiguration(Request $request, $id)
+    {
+        try {
+            /** @var User $actor */
+            $actor = Auth::user();
+
+            // Get configuration file
+            $config = DB::table('configuration_files')
+                ->leftJoin('raw_data', 'configuration_files.id', '=', 'raw_data.file_id')
+                ->leftJoin('system_register as sr', 'configuration_files.system_register_id', '=', 'sr.id')
+                ->where('configuration_files.id', $id)
+                ->select('configuration_files.*', 'raw_data.file_data as data', 'sr.workspace_id as system_workspace_id', 'sr.user_id as system_user_id')
+                ->first();
+
+            if (!$config) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Configuration file not found'
+                ], 404);
+            }
+
+            // Check access
+            if (!$this->canAccessConfigurationRecord($actor, $config)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // Get configuration content
+            [$disk, $path] = $this->resolveDiskAndPathForRead($config->storage_disk ?? null, (string) ($config->file_location ?? ''));
+            $configContent = $config->data ?? '';
+            
+            if ($path !== '' && Storage::disk($disk)->exists($path)) {
+                $fileContent = Storage::disk($disk)->get($path);
+                if ($fileContent !== false && $fileContent !== null) {
+                    $configContent = $fileContent;
+                }
+            }
+
+            if (empty($configContent)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Configuration file is empty'
+                ], 400);
+            }
+
+            // Use AI Audit Service
+            $auditHelper = new \App\Services\ConfigAuditHelper();
+            
+            if (!$auditHelper->isAuditingConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'AI auditing is not configured. Please configure an AI provider in Admin Settings → Site Settings → AI Setup.'
+                ], 400);
+            }
+
+            // Perform audit - create model instance from DB result
+            $configModel = ConfigurationFile::with('rawData')->find($id);
+            if (!$configModel) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Configuration file model not found'
+                ], 404);
+            }
+
+            $auditResult = $auditHelper->auditConfigurationFile($configModel);
+
+            if (!$auditResult) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'AI audit failed. Please check your AI provider configuration and try again.'
+                ], 500);
+            }
+
+            // Parse audit results into structured format
+            $auditText = $auditResult['audit_results'] ?? '';
+            
+            // Structured response for UI
+            $response = [
+                'success' => true,
+                'data' => [
+                    'service_info' => 'Configuration Audit Report',
+                    'config_details' => "File: {$config->file_name}\nService: {$config->service_name}\nCreated: {$config->created_at}",
+                    'risk_areas' => substr($auditText, 0, 500), // First 500 chars as summary
+                    'security_status' => $auditText,
+                    'hardening_suggestions' => 'Review the audit results above and implement recommended security hardening.',
+                    'hardened_override' => ''
+                ],
+                'risk_level' => 'medium',
+                'provider' => $auditResult['provider'] ?? 'unknown',
+                'issues_found' => $auditResult['issues_found'] ?? []
+            ];
+
+            return response()->json($response);
+
+        } catch (\Throwable $e) {
+            Log::error('Configuration Audit Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during audit: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Show the settings view
      */
     public function settings()
@@ -1303,3 +1418,4 @@ class DashboardController extends Controller
         });
     }
 }
+

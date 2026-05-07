@@ -4,6 +4,46 @@
 
 @section('dashboard-content')
 <div style="padding: 40px;">
+    <style>
+        .system-page-card {
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .system-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .system-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--color-accent-blue);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .system-card-header {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            padding: 20px;
+        }
+
+        .system-card-action {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+    </style>
     @if(session('success'))
         <div style="padding:12px; border-radius:8px; background:#dcfce7; color:#166534; margin-bottom:16px;">
             {{ session('success') }}
@@ -16,7 +56,7 @@
     </div>
 
     <!-- Search/Filter Section -->
-    <div style="background: white; padding: 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
+    <div class="system-page-card" style="padding: 24px; margin-bottom: 30px;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
             <i class="fas fa-filter" style="color: #111111; font-size: 18px;"></i>
             <h3 style="font-size: 16px; font-weight: bold; color: #333; margin: 0;">Search & Filter</h3>
@@ -53,10 +93,10 @@
                 </div>
             </div>
             <div style="display: flex; gap: 12px;">
-                <button type="submit" style="background: #000000; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, background 0.2s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.background='#555555'" onmouseout="this.style.transform='scale(1)'; this.style.background='#000000'">
+                <button type="submit" class="btn-save" style="padding: 12px 24px; border-radius: 10px; font-size: 14px;">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <a href="{{ route('systems-registered') }}" style="background: #d1d1d1; color: #333333; border: 1px solid #a8a8a8; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.2s ease;" onmouseover="this.style.background='#b6b6b6'" onmouseout="this.style.background='#d1d1d1'">
+                <a href="{{ route('systems-registered') }}" class="btn-secondary" style="padding: 12px 24px; border-radius: 10px; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
                     <i class="fas fa-redo"></i> Clear Filters
                 </a>
             </div>
@@ -90,12 +130,10 @@
                         ?? 'N/A';
                 @endphp
 
-                <div style="background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%); border-radius: 14px; border: 2px solid #d0d7de; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;" 
-                     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 28px rgba(0,0,0,0.15)';" 
-                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';">
+                 <div class="system-card">
                     
                     <!-- Card Header -->
-                    <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 20px; position: relative;">
+                    <div class="system-card-header" style="position: relative;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="background: rgba(255,255,255,0.25); border-radius: 10px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
@@ -206,7 +244,7 @@
                                     {{ \Carbon\Carbon::parse($item->created_at)->format('M d, Y H:i A') }}
                                 </div>
                                 @if($canEditSystemInfo)
-                                    <a href="{{ route('systems-registered.edit', ['systemId' => $item->id]) }}"
+                                    <a href="#"
                                        style="background:#f3f4f6; border:1px solid #d1d5db; color:#111827; padding:8px 10px; border-radius:8px; font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s ease;"
                                        onmouseover="this.style.background='#e5e7eb'; this.style.boxShadow='0 4px 12px rgba(17,24,39,0.12)'"
                                        onmouseout="this.style.background='#f3f4f6'; this.style.boxShadow='none'">
@@ -228,7 +266,7 @@
                                    style="background:#f3f4f6; border:1px solid #d1d5db; color:#111827; padding:12px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s ease;"
                                    onmouseover="this.style.background='#e5e7eb'; this.style.boxShadow='0 4px 12px rgba(17,24,39,0.12)'; showSystemInfoPreview('system-info-preview-{{ $item->id }}')"
                                    onmouseout="this.style.background='#f3f4f6'; this.style.boxShadow='none'; hideSystemInfoPreview('system-info-preview-{{ $item->id }}')">
-                                    <i class="fas fa-pen"></i> System Info
+                                    <i class="fas fa-circle-info"></i> System Info
                                 </a>
                             @else
                                 <div title="System Info is locked"
@@ -238,10 +276,7 @@
                                     <i class="fas fa-lock"></i> System Info
                                 </div>
                             @endif
-                            <button onclick="window.location.href='{{ route('systems-registered.services', ['systemId' => $item->id]) }}'" 
-                                    style="background: #000000; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;"
-                                    onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.25)'; this.style.background='#555555';" 
-                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.background='#000000';">
+                            <button onclick="window.location.href='{{ route('systems-registered.services', ['systemId' => $item->id]) }}'" class="btn-save system-card-action">
                                 <i class="fas fa-cubes"></i> View Services
                             </button>
                         </div>

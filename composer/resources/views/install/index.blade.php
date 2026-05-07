@@ -6,26 +6,26 @@
     <title>AtGlance Installer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Sora', 'ui-sans-serif', 'system-ui']
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui']
                     },
                     colors: {
                         brand: {
-                            50: '#effdf7',
-                            100: '#d8f9e8',
-                            500: '#444444',
-                            600: '#555555',
-                            700: '#666666'
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#38BDF8',
+                            600: '#0ea5e9',
+                            700: '#0284c7'
                         }
                     },
                     boxShadow: {
-                        glow: '0 20px 60px -30px #222222'
+                        glow: '0 20px 60px -30px rgba(31, 41, 55, 0.35)'
                     }
                 }
             }
@@ -33,15 +33,18 @@
     </script>
     <style>
         :root {
-            --bg-1: #f5f5f5;
+            --bg-1: #f7fafc;
             --bg-2: #ffffff;
-            --bg-3: #cccccc;
-            --ink: #0f172a;
+            --bg-3: #e5e7eb;
+            --ink: #111827;
+            --accent-blue: #38BDF8;
+            --accent-cyan: #67E8F9;
         }
 
         body {
-            font-family: 'Sora', ui-sans-serif, system-ui;
+            font-family: 'Inter', ui-sans-serif, system-ui;
             color: var(--ink);
+            background: radial-gradient(circle at top right, rgba(103, 232, 249, 0.2), transparent 45%), var(--bg-1);
         }
 
         .installer-layout {
@@ -55,13 +58,15 @@
         }
 
         .installer-primary-button {
-            background: #512fc9;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
             color: #ffffff;
-            transition: background-color 0.2s ease;
+            box-shadow: 0 10px 24px rgba(56, 189, 248, 0.3);
+            transition: all 0.3s ease;
         }
 
         .installer-primary-button:hover {
-            background: #4326a8;
+            transform: translateY(-1px);
+            box-shadow: 0 16px 32px rgba(56, 189, 248, 0.35);
         }
     </style>
 </head>

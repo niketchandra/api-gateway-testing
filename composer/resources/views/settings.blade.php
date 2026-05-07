@@ -45,21 +45,30 @@
 
     <style>
         .settings-tab {
-            padding: 12px 20px;
-            background: none;
-            border: none;
+            padding: 10px 16px;
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            color: #666;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s ease;
+            color: var(--color-text-light);
+            transition: all var(--transition-base);
+            margin-bottom: 0;
+        }
+
+        .settings-tab:hover {
+            color: var(--color-text-dark);
+            border-color: var(--color-accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
         }
 
         .settings-tab.active {
-            color: #555555;
-            border-bottom-color: #8f8f8f;
+            color: var(--color-white);
+            border-color: transparent;
+            background: linear-gradient(135deg, var(--color-accent-blue) 0%, var(--color-accent-cyan) 100%);
+            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.25);
         }
 
         .settings-content {
@@ -160,35 +169,12 @@
         }
 
         .btn-save {
-            background: #000000;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-save:hover {
-            transform: translateY(-2px);
-            background: #2f2f2f;
+            padding: 12px 24px;
         }
 
         .btn-secondary {
-            background: #d1d1d1;
-            color: #333;
-            padding: 12px 30px;
-            border: 1px solid #a8a8a8;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
+            padding: 12px 24px;
             margin-left: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            background: #b6b6b6;
         }
 
         .api-key-item {

@@ -942,9 +942,16 @@ class AdminDashboardController extends Controller
             'hasSsoClientSecret' => !empty($ssoProviderClientSecrets[$ssoEnabledProviders[0] ?? ''] ?? ''),
             'ssoTenantId' => $ssoProviderTenantIds[$ssoEnabledProviders[0] ?? ''] ?? '',
             'ssoRedirectUrl' => $ssoProviderUrls[$ssoEnabledProviders[0] ?? ''] ?? '',
+            'aiProviderType' => AdminSetting::getValue('ai_provider_type', 'cloud'),
+            'aiProvider' => AdminSetting::getValue('ai_provider', 'chatgpt'),
+            'aiApiKeyMap' => $this->getJsonSetting('ai_api_keys', []),
+            'byosEnabled' => $this->isFeatureEnabledSetting('byos_enabled'),
+            'byosBaseUrl' => AdminSetting::getValue('byos_base_url', ''),
+            'byosModel' => AdminSetting::getValue('byos_model', ''),
+            'hasByosAuthToken' => AdminSetting::getValue('byos_auth_token', null) !== null,
+            'byosMaxThinkingTokens' => AdminSetting::getValue('byos_max_thinking_tokens', ''),
         ]);
     }
-
     public function updateSiteSettings(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -1521,6 +1528,84 @@ class AdminDashboardController extends Controller
         }
 
         return redirect()->route('admin.settings', ['tab' => 'sso'])->with('success', 'SSO settings saved successfully.');
+    }
+
+    public function updateAiSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ai_provider_type' => ['required', 'in:cloud,byos'],
+            'ai_provider' => ['nullable', 'in:chatgpt,claude,gemini,ollama'],
+            'ai_api_keys' => ['nullable', 'array'],
+            'ai_api_keys.*' => ['nullable', 'string', 'max:1000'],
+            'ai_ollama_base_url' => ['nullable', 'url', 'max:500'],
+            'ai_ollama_model' => ['nullable', 'string', 'max:255'],
+            'byos_enabled' => ['nullable', 'boolean'],
+            'byos_base_url' => ['nullable', 'url', 'max:500'],
+            'byos_model' => ['nullable', 'string', 'max:255'],
+            'byos_auth_token' => ['nullable', 'string', 'max:1000'],
+            'byos_max_thinking_tokens' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        // Get API keys from request
+        $apiKeys = collect($request->input('ai_api_keys', []))
+            ->mapWithKeys(function ($key, $provider) {
+                $provider = strtolower(trim((string) $provider));
+                $trimmedKey = trim((string) $key);
+                if ($trimmedKey === '') {
+                    return [];
+                }
+                return [$provider => $trimmedKey];
+            })
+            ->all();
+
+        $providerType = $request->input('ai_provider_type', 'cloud');
+        $selectedProvider = $request->input('ai_provider', 'chatgpt');
+
+        AdminSetting::putValue('ai', 'ai_provider_type', $providerType, false);
+        AdminSetting::putValue('ai', 'ai_provider', $selectedProvider, false);
+
+        // Save API keys (encrypted)
+        if (!empty($apiKeys)) {
+            AdminSetting::putValue('ai', 'ai_api_keys', $apiKeys, true);
+        }
+
+        if ($selectedProvider === 'ollama') {
+            $ollamaBaseUrl = trim((string) $request->input('ai_ollama_base_url', ''));
+            $ollamaModel = trim((string) $request->input('ai_ollama_model', ''));
+
+            if ($ollamaBaseUrl !== '') {
+                AdminSetting::putValue('ai', 'ai_ollama_base_url', $ollamaBaseUrl, false);
+            }
+            if ($ollamaModel !== '') {
+                AdminSetting::putValue('ai', 'ai_ollama_model', $ollamaModel, false);
+            }
+        }
+
+        // Save BYOS settings
+        $byosEnabled = $request->boolean('byos_enabled');
+        AdminSetting::putValue('ai', 'byos_enabled', $byosEnabled ? 'true' : 'false', false);
+
+        if ($byosEnabled) {
+            $baseUrl = trim((string) $request->input('byos_base_url', ''));
+            $model = trim((string) $request->input('byos_model', ''));
+            $authToken = trim((string) $request->input('byos_auth_token', ''));
+            $maxThinkingTokens = $request->input('byos_max_thinking_tokens', '');
+
+            if ($baseUrl !== '') {
+                AdminSetting::putValue('ai', 'byos_base_url', $baseUrl, false);
+            }
+            if ($model !== '') {
+                AdminSetting::putValue('ai', 'byos_model', $model, false);
+            }
+            if ($authToken !== '') {
+                AdminSetting::putValue('ai', 'byos_auth_token', $authToken, true);
+            }
+            if ($maxThinkingTokens !== '' && is_numeric($maxThinkingTokens)) {
+                AdminSetting::putValue('ai', 'byos_max_thinking_tokens', (string) $maxThinkingTokens, false);
+            }
+        }
+
+        return redirect()->route('admin.settings', ['tab' => 'ai'])->with('success', 'AI settings saved successfully.');
     }
 
     private function getJsonSetting(string $key, array $default): array

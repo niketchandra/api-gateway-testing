@@ -4,6 +4,34 @@
 
 @section('dashboard-content')
 <div style="padding: 40px;">
+    <style>
+        .version-summary-card {
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .version-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .version-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--color-accent-blue);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .version-card-header {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            padding: 20px;
+        }
+    </style>
     <div style="margin-bottom: 30px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
@@ -12,13 +40,13 @@
                 </h1>
                 <p style="color: #666; font-size: 14px;">View and download all configuration versions for this service</p>
             </div>
-            <a href="{{ route('systems-registered.services', ['systemId' => $systemId]) }}" style="background: #111827; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background 0.2s ease;" onmouseover="this.style.background='#1f2937'" onmouseout="this.style.background='#111827'">
+            <a href="{{ route('systems-registered.services', ['systemId' => $systemId]) }}" class="btn-save" style="padding: 10px 20px; border-radius: 10px; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 8px;">
                 <i class="fas fa-arrow-left"></i> Back to Services
             </a>
         </div>
     </div>
 
-    <div style="background: white; padding: 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px;">
+    <div class="version-summary-card" style="padding: 24px; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; justify-content: space-between;">
             <div>
                 <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px; font-weight: 600;">Total Versions</div>
@@ -42,12 +70,10 @@
                 @php
                     $isActive = strtolower($version->status) === 'active';
                 @endphp
-                <div style="background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%); border-radius: 14px; border: 2px solid #d0d7de; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;" 
-                     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 28px rgba(0,0,0,0.15)';" 
-                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';">
+                 <div class="version-card">
                     
                     <!-- Version Header -->
-                    <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 20px;">
+                    <div class="version-card-header">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div style="background: rgba(255,255,255,0.25); border-radius: 10px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
@@ -95,7 +121,7 @@
                                 </a>
                                 <div id="version-hash-content-{{ $version->id }}" style="display: none; margin-top: 8px; background: white; padding: 8px; border-radius: 6px; border: 1px solid #ffe0b2; font-family: 'Courier New', monospace; font-size: 10px; color: #333; word-break: break-all; line-height: 1.5; position: relative; padding-right: 70px;">
                                     <span id="version-hash-value-{{ $version->id }}">{{ $version->validation_hash }}</span>
-                                    <button onclick="copyHashById('version-hash-value-{{ $version->id }}', this)" style="position: absolute; top: 6px; right: 6px; background: #111827; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#1f2937'" onmouseout="this.style.background='#111827'">
+                                    <button onclick="copyHashById('version-hash-value-{{ $version->id }}', this)" class="btn-save" style="position: absolute; top: 6px; right: 6px; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600;">
                                         <i class="fas fa-copy"></i> Copy
                                     </button>
                                 </div>
@@ -117,16 +143,10 @@
 
                         <!-- Action Buttons -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 16px; border-top: 1px solid #f0f0f0;">
-                            <button onclick="window.location.href='{{ route('configuration-backups.view', ['id' => $version->id]) }}'" 
-                                    style="background: #111827; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
-                                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(17, 24, 39, 0.35)'; this.style.background='#1f2937';" 
-                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.background='#111827';">
+                            <button onclick="window.location.href='{{ route('configuration-backups.view', ['id' => $version->id]) }}'" class="btn-save" style="padding: 10px; border-radius: 10px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <i class="fas fa-eye"></i> View
                             </button>
-                            <button onclick="window.location.href='{{ route('configuration-backups.download', ['id' => $version->id]) }}'" 
-                                    style="background: #f3f4f6; color: #111827; border: 1px solid #d1d5db; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
-                                    onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(17, 24, 39, 0.12)'; this.style.background='#e5e7eb';" 
-                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.background='#f3f4f6';">
+                            <button onclick="window.location.href='{{ route('configuration-backups.download', ['id' => $version->id]) }}'" class="btn-secondary" style="padding: 10px; border-radius: 10px; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <i class="fas fa-download"></i> Download
                             </button>
                         </div>

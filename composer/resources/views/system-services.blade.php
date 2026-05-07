@@ -4,17 +4,46 @@
 
 @section('dashboard-content')
 <div style="padding: 40px;">
+    <style>
+        .service-page-card {
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .service-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+            border: 1px solid var(--color-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .service-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--color-accent-blue);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .service-card-header {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            padding: 20px;
+            color: white;
+        }
+    </style>
     <div style="margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
         <div>
             <h1 style="font-size: 28px; font-weight: bold; color: #333; margin-bottom: 8px;">Services</h1>
             <p style="color: #666; font-size: 14px;">System #{{ $system->id }} - {{ $system->system_name ?? 'N/A' }}</p>
         </div>
-        <a href="{{ route('systems-registered') }}" style="background: #111827; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background 0.2s ease;" onmouseover="this.style.background='#1f2937'" onmouseout="this.style.background='#111827'">
+        <a href="{{ route('systems-registered') }}" class="btn-save" style="padding: 10px 20px; border-radius: 10px; text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; gap: 8px;">
             <i class="fas fa-arrow-left"></i> Back to Systems
         </a>
     </div>
 
-    <div style="background: white; padding: 24px; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 30px;">
+    <div class="service-page-card" style="padding: 24px; margin-bottom: 30px;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
             <i class="fas fa-filter" style="color: #111827; font-size: 18px;"></i>
             <h3 style="font-size: 16px; font-weight: bold; color: #333; margin: 0;">Search & Filter Services</h3>
@@ -35,10 +64,10 @@
                 </div>
             </div>
             <div style="display: flex; gap: 12px;">
-                <button type="submit" style="background: #111827; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s ease;" onmouseover="this.style.background='#1f2937'" onmouseout="this.style.background='#111827'">
+                <button type="submit" class="btn-save" style="padding: 12px 24px; border-radius: 10px; font-size: 14px;">
                     <i class="fas fa-search"></i> Search
                 </button>
-                <a href="{{ route('systems-registered.services', ['systemId' => $system->id]) }}" style="background: #f5f5f5; color: #666; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block;">
+                <a href="{{ route('systems-registered.services', ['systemId' => $system->id]) }}" class="btn-secondary" style="padding: 12px 24px; border-radius: 10px; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;">
                     <i class="fas fa-redo"></i> Clear
                 </a>
             </div>
@@ -54,8 +83,8 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px;">
             @foreach($services as $service)
                 @php $isActive = strtolower((string) $service->status) === 'active'; @endphp
-                <div style="background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%); border-radius: 14px; border: 2px solid #d0d7de; box-shadow: 0 8px 20px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 28px rgba(0,0,0,0.14)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)'">
-                    <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 20px; color: white;">
+                <div class="service-card">
+                    <div class="service-card-header">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <div style="font-size: 11px; opacity: 0.85;">SERVICE ID</div>
@@ -84,10 +113,7 @@
                             </div>
                         </div>
 
-                        <button onclick="window.location.href='{{ route('configuration-backups.service-versions', ['serviceId' => $service->service_id]) }}'"
-                                style="width: 100%; background: #000000; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s ease;"
-                                onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.25)'; this.style.background='#555555';"
-                                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'; this.style.background='#000000';">
+                        <button onclick="window.location.href='{{ route('configuration-backups.service-versions', ['serviceId' => $service->service_id]) }}'" class="btn-save" style="width: 100%; padding: 12px; border-radius: 10px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                             <i class="fas fa-folder-open"></i> View Configuration Files & Versions
                         </button>
                     </div>

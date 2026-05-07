@@ -47,6 +47,7 @@ Route::middleware('app.installed')->group(function () {
         Route::get('/configuration-backups/service/{serviceId}/versions', [DashboardController::class, 'viewServiceVersions'])->name('configuration-backups.service-versions');
         Route::get('/configuration-backups/{id}/view', [DashboardController::class, 'viewConfigurationFile'])->name('configuration-backups.view');
         Route::get('/configuration-backups/{id}/download', [DashboardController::class, 'downloadConfigurationFile'])->name('configuration-backups.download');
+        Route::post('/configuration-backups/{id}/audit', [DashboardController::class, 'auditConfiguration'])->name('configuration-backups.audit');
         Route::get('/systems-registered', [DashboardController::class, 'systemsRegistered'])->name('systems-registered');
         Route::get('/systems-registered/{systemId}/edit', [DashboardController::class, 'editRegisteredSystem'])->name('systems-registered.edit');
         Route::put('/systems-registered/{systemId}', [DashboardController::class, 'updateRegisteredSystem'])->name('systems-registered.update');
@@ -103,3 +104,6 @@ Route::middleware('app.installed')->group(function () {
         });
     });
 });
+
+            Route::post('/settings/sso', [AdminDashboardController::class, 'updateSsoSettings'])->name('admin.settings.sso');
+            Route::post('/settings/ai', [AdminDashboardController::class, 'updateAiSettings'])->name('admin.settings.ai');
