@@ -633,15 +633,17 @@
                     @foreach(($ssoProviderOptions ?? []) as $providerKey => $providerMeta)
                         <div class="provider-url-group" data-provider="{{ $providerKey }}" style="display:{{ in_array($providerKey, $selectedProviders, true) ? 'block' : 'none' }};">
                             <div style="font-size:12px; color:#111827; margin-bottom:6px;">Callback URL for {{ $providerMeta['label'] ?? ucfirst($providerKey) }}: <strong>{{ url('/auth/sso/' . $providerKey . '/callback') }}</strong></div>
-                            <label style="display:block; font-size:12px; color:#4b5563; margin-bottom:5px;">{{ $providerMeta['label'] ?? ucfirst($providerKey) }} URL</label>
-                            <input
-                                class="provider-config-input"
-                                type="url"
-                                name="sso_provider_urls[{{ $providerKey }}]"
-                                value="{{ $providerUrls[$providerKey] ?? '' }}"
-                                placeholder="https://..."
-                                style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;"
-                            >
+                            @if(!in_array($providerKey, ['azure-ad', 'microsoft'], true))
+                                <label style="display:block; font-size:12px; color:#4b5563; margin-bottom:5px;">{{ $providerMeta['label'] ?? ucfirst($providerKey) }} URL</label>
+                                <input
+                                    class="provider-config-input"
+                                    type="url"
+                                    name="sso_provider_urls[{{ $providerKey }}]"
+                                    value="{{ $providerUrls[$providerKey] ?? '' }}"
+                                    placeholder="https://..."
+                                    style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px;"
+                                >
+                            @endif
 
                             <label style="display:block; font-size:12px; color:#4b5563; margin:8px 0 5px;">{{ $providerMeta['label'] ?? ucfirst($providerKey) }} Client ID</label>
                             <input

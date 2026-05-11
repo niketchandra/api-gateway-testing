@@ -30,7 +30,7 @@ Route::middleware('app.installed')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/auth/sso/{provider}', [AuthController::class, 'redirectToSso'])->name('auth.sso.redirect');
-    Route::get('/auth/sso/{provider}/callback', [AuthController::class, 'handleSsoCallback'])->name('auth.sso.callback');
+    Route::match(['get', 'post'], '/auth/sso/{provider}/callback', [AuthController::class, 'handleSsoCallback'])->name('auth.sso.callback');
     Route::post('/password/email', [AuthController::class, 'sendPasswordResetLink'])->name('password.email');
     Route::post('/contact', [AuthController::class, 'storeContact'])->name('contact');
     Route::get('/site-logo/{path?}', [AdminDashboardController::class, 'serveSiteLogo'])

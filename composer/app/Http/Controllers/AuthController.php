@@ -55,6 +55,8 @@ class AuthController extends Controller
 
         if ($provider === 'github') {
             $providerUrl = $this->buildGithubAuthorizeUrl($providerUrl, $request);
+        } elseif (in_array($provider, ['azure-ad', 'microsoft'], true)) {
+            $providerUrl = $this->buildAzureAdAuthorizeUrl($providerUrl, $provider, $request);
         }
 
         if ($intent === 'pin_reset') {
@@ -71,18 +73,41 @@ class AuthController extends Controller
         $provider = strtolower(trim($provider));
         $intent = (string) $request->session()->pull('sso_intent', '');
 
-        if ($provider !== 'github') {
+        Log::info('SSO_Callback_Start', [
+            'provider' => $provider,
+            'intent' => $intent,
+            'has_code' => $request->filled('code'),
+            'has_state' => $request->filled('state'),
+            'has_error' => $request->filled('error'),
+        ]);
+
+        if (!in_array($provider, ['github', 'azure-ad', 'microsoft'], true)) {
+            Log::warning('SSO_UnsupportedProvider', ['provider' => $provider]);
             return redirect()->route('home')->withErrors([
                 'login' => 'Callback for this SSO provider is not implemented yet.',
             ]);
         }
 
         if ($request->filled('error')) {
+            Log::warning('SSO_ProviderError', [
+                'provider' => $provider,
+                'error' => $request->input('error'),
+                'error_description' => $request->input('error_description'),
+            ]);
             return redirect()->route('home')->withErrors([
-                'login' => 'GitHub login was cancelled or denied.',
+                'login' => ucfirst($provider) . ' login was cancelled or denied.',
             ]);
         }
 
+        if (in_array($provider, ['azure-ad', 'microsoft'], true)) {
+            return $this->handleAzureAdCallback($request, $provider, $intent);
+        }
+
+        return $this->handleGithubCallback($request, $intent);
+    }
+
+    private function handleGithubCallback(Request $request, string $intent)
+    {
         $code = (string) $request->query('code', '');
         if ($code === '') {
             return redirect()->route('home')->withErrors([
@@ -177,59 +202,178 @@ class AuthController extends Controller
 
         $displayName = trim((string) (($githubUser['name'] ?? null) ?: ($githubUser['login'] ?? null) ?: 'GitHub User'));
 
-        $user = User::where('email', $email)->first();
-        if (!$user) {
-            $user = User::create([
-                'name' => $displayName,
-                'email' => $email,
-                'password' => Str::random(32),
-            ]);
-        }
+        return $this->processOrCreateSsoUser($email, $displayName, 'github', $intent);
+    }
 
-        if (strtolower((string) ($user->status ?? 'active')) !== 'active') {
+    private function handleAzureAdCallback(Request $request, string $provider, string $intent)
+    {
+        $code = (string) $request->input('code', '');
+        if ($code === '') {
             return redirect()->route('home')->withErrors([
-                'login' => 'Your account is inactive. Please contact your administrator.',
+                'login' => 'Missing authorization code from ' . ucfirst($provider) . ' callback.',
             ]);
         }
 
-        if ($intent === 'pin_reset' && Auth::check()) {
-            /** @var User $currentUser */
-            $currentUser = Auth::user();
-            if (strcasecmp((string) $currentUser->email, $email) !== 0) {
-                $request->session()->forget('pending_pin_reset_pin');
-                return redirect()->route('settings')->withErrors([
-                    'current_password' => 'User not authenticated. SSO account does not match current user email.',
+        $expectedState = (string) $request->session()->pull('sso_state_azure_ad', '');
+        $returnedState = (string) $request->input('state', '');
+        if ($expectedState !== '' && $returnedState !== '' && !hash_equals($expectedState, $returnedState)) {
+            return redirect()->route('home')->withErrors([
+                'login' => 'Invalid OAuth state received from ' . ucfirst($provider) . '.',
+            ]);
+        }
+
+        [$clientId, $clientSecret] = $this->getProviderClientCredentials($provider);
+
+        if ($clientId === '' || $clientSecret === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' SSO is not fully configured. Set Client ID and Client Secret in admin settings.',
+            ]);
+        }
+
+        $callbackUrl = route('auth.sso.callback', ['provider' => $provider]);
+        $baseUrl = $this->resolveSsoProviderUrl($provider);
+        preg_match('/^(https?:\/\/[^\/]+)/', $baseUrl, $matches);
+        $tenantBaseUrl = $matches[1] ?? 'https://login.microsoftonline.com';
+
+        $tokenResponse = Http::asForm()
+            ->acceptJson()
+            ->timeout(15)
+            ->post($tenantBaseUrl . '/oauth2/v2.0/token', [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'code' => $code,
+                'redirect_uri' => $callbackUrl,
+                'grant_type' => 'authorization_code',
+            ]);
+
+        if (!$tokenResponse->ok()) {
+            return redirect()->route('home')->withErrors([
+                'login' => 'Failed to get access token from ' . ucfirst($provider) . '.',
+            ]);
+        }
+
+        $accessToken = (string) $tokenResponse->json('access_token', '');
+        if ($accessToken === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' did not return an access token.',
+            ]);
+        }
+
+        $graphResponse = Http::withToken($accessToken)
+            ->acceptJson()
+            ->timeout(15)
+            ->get('https://graph.microsoft.com/v1.0/me');
+
+        if (!$graphResponse->ok()) {
+            return redirect()->route('home')->withErrors([
+                'login' => 'Failed to fetch ' . ucfirst($provider) . ' profile information.',
+            ]);
+        }
+
+        $azureUser = $graphResponse->json();
+        $email = trim((string) ($azureUser['mail'] ?? $azureUser['userPrincipalName'] ?? ''));
+        $displayName = trim((string) ($azureUser['displayName'] ?? 'Azure AD User'));
+
+        if ($email === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' account email is required to sign in.',
+            ]);
+        }
+
+        return $this->processOrCreateSsoUser($email, $displayName, $provider, $intent);
+    }
+
+    private function processOrCreateSsoUser(string $email, string $displayName, string $provider, string $intent)
+    {
+        try {
+            Log::info('SSO_ProcessUser_Start', [
+                'email' => $email,
+                'provider' => $provider,
+                'intent' => $intent,
+            ]);
+
+            $user = User::where('email', $email)->first();
+            if (!$user) {
+                Log::info('SSO_UserNotFound_Creating', ['email' => $email]);
+                $user = User::create([
+                    'name' => $displayName,
+                    'email' => $email,
+                    'password' => Hash::make(Str::random(32)),
+                    'rbac_id' => 102, // Default to user role
+                ]);
+                Log::info('SSO_UserCreated', ['email' => $email, 'user_id' => $user->id, 'rbac_id' => $user->rbac_id]);
+            } else {
+                Log::info('SSO_UserFound', ['email' => $email, 'user_id' => $user->id, 'rbac_id' => $user->rbac_id]);
+            }
+
+            if (strtolower((string) ($user->status ?? 'active')) !== 'active') {
+                Log::warning('SSO_UserInactive', ['email' => $email, 'status' => $user->status]);
+                return redirect()->route('home')->withErrors([
+                    'login' => 'Your account is inactive. Please contact your administrator.',
                 ]);
             }
 
-            $pendingPin = (string) $request->session()->pull('pending_pin_reset_pin', '');
-            if (preg_match('/^\d{5}$/', $pendingPin) === 1) {
-                $currentUser->pin = Hash::make($pendingPin);
-                $currentUser->save();
+            if ($intent === 'pin_reset' && Auth::check()) {
+                /** @var User $currentUser */
+                $currentUser = Auth::user();
+                if (strcasecmp((string) $currentUser->email, $email) !== 0) {
+                    Log::warning('SSO_PinReset_EmailMismatch', ['current' => $currentUser->email, 'sso' => $email]);
+                    return redirect()->route('settings')->withErrors([
+                        'current_password' => 'User not authenticated. SSO account does not match current user email.',
+                    ]);
+                }
 
-                return redirect()->route('settings')->with('success', 'SSO authentication successful. PIN reset completed.');
+                $pendingPin = (string) session()->pull('pending_pin_reset_pin', '');
+                if (preg_match('/^\d{5}$/', $pendingPin) === 1) {
+                    $currentUser->pin = Hash::make($pendingPin);
+                    $currentUser->save();
+                    Log::info('SSO_PinReset_Completed', ['email' => $email]);
+
+                    return redirect()->route('settings')->with('success', 'SSO authentication successful. PIN reset completed.');
+                }
+
+                session()->put('sso_pin_verified_at', Carbon::now()->timestamp);
+                session()->put('auth_method', 'sso');
+                session()->put('auth_sso_provider', $provider);
+                Log::info('SSO_PinReset_Verified', ['email' => $email]);
+
+                return redirect()->route('settings')->with('success', 'SSO re-authentication successful. You can now reset your PIN.');
             }
 
-            $request->session()->put('sso_pin_verified_at', Carbon::now()->timestamp);
-            $request->session()->put('auth_method', 'sso');
-            $request->session()->put('auth_sso_provider', $provider);
+            if ($intent === 'pin_reset' && !Auth::check()) {
+                Log::warning('SSO_PinReset_NotAuthenticated', ['email' => $email]);
+                return redirect()->route('home')->withErrors([
+                    'login' => 'User not authenticated. Please login first and retry PIN reset.',
+                ]);
+            }
 
-            return redirect()->route('settings')->with('success', 'SSO re-authentication successful. You can now reset your PIN.');
-        }
+            Auth::login($user, true);
+            session()->regenerate();
+            session()->put('auth_method', 'sso');
+            session()->put('auth_sso_provider', $provider);
+            
+            $targetRoute = in_array((int) $user->rbac_id, [100, 101], true) ? 'admin.dashboard' : 'dashboard';
+            Log::info('SSO_LoginSuccess', [
+                'email' => $email,
+                'user_id' => $user->id,
+                'rbac_id' => $user->rbac_id,
+                'target_route' => $targetRoute,
+                'provider' => $provider,
+            ]);
 
-        if ($intent === 'pin_reset' && !Auth::check()) {
+            return redirect()->route($targetRoute)->with('success', 'Logged in with ' . ucfirst($provider) . ' successfully.');
+        } catch (\Throwable $e) {
+            Log::error('SSO_ProcessUser_Error', [
+                'email' => $email,
+                'provider' => $provider,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return redirect()->route('home')->withErrors([
-                'login' => 'User not authenticated. Please login first and retry PIN reset.',
+                'login' => 'An error occurred during authentication. Please try again.',
             ]);
         }
-
-        Auth::login($user, true);
-        $request->session()->regenerate();
-        $request->session()->put('auth_method', 'sso');
-        $request->session()->put('auth_sso_provider', $provider);
-        $targetRoute = in_array((int) $user->rbac_id, [100, 101], true) ? 'admin.dashboard' : 'dashboard';
-
-        return redirect()->route($targetRoute)->with('success', 'Logged in with GitHub successfully.');
     }
 
     /**
@@ -401,6 +545,30 @@ class AuthController extends Controller
         return $baseUrl . '?' . http_build_query($query);
     }
 
+    private function buildAzureAdAuthorizeUrl(string $baseUrl, string $provider, Request $request): string
+    {
+        [$clientId] = $this->getProviderClientCredentials($provider);
+        if ($clientId === '') {
+            return $baseUrl;
+        }
+
+        $state = Str::random(40);
+        $request->session()->put('sso_state_azure_ad', $state);
+
+        $callbackUrl = route('auth.sso.callback', ['provider' => $provider]);
+
+        $query = [
+            'client_id' => $clientId,
+            'redirect_uri' => $callbackUrl,
+            'response_type' => 'code',
+            'scope' => 'openid profile email',
+            'response_mode' => 'form_post',
+            'state' => $state,
+        ];
+
+        return $baseUrl . '?' . http_build_query($query);
+    }
+
     private function getProviderClientCredentials(string $provider): array
     {
         $provider = strtolower(trim($provider));
@@ -478,7 +646,17 @@ class AuthController extends Controller
 
     private function resolveSsoProviderUrl(string $provider): string
     {
-        return $this->resolveSsoProviderValue('sso_provider_urls', $provider, $this->getEnvValue($this->providerEnvKeyPrefix($provider) . '_URL', ''));
+        $urlFromEnvOrSettings = $this->resolveSsoProviderValue('sso_provider_urls', $provider, $this->getEnvValue($this->providerEnvKeyPrefix($provider) . '_URL', ''));
+        
+        // Auto-construct Azure AD / Microsoft URLs from tenant ID if URL not explicitly provided
+        if ($urlFromEnvOrSettings === '' && in_array($provider, ['azure-ad', 'microsoft'], true)) {
+            $tenantId = trim((string) $this->getEnvValue($this->providerEnvKeyPrefix($provider) . '_TENANT_ID', ''));
+            if ($tenantId !== '') {
+                return "https://login.microsoftonline.com/{$tenantId}/oauth2/v2.0/authorize";
+            }
+        }
+        
+        return $urlFromEnvOrSettings;
     }
 
     private function resolveSsoProviderSecret(string $provider, string $fallback): string
