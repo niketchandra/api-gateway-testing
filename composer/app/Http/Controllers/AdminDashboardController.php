@@ -1539,10 +1539,10 @@ class AdminDashboardController extends Controller
             'ai_provider' => ['nullable', 'in:chatgpt,claude,gemini,ollama'],
             'ai_api_keys' => ['nullable', 'array'],
             'ai_api_keys.*' => ['nullable', 'string', 'max:1000'],
-            'ai_ollama_base_url' => ['nullable', 'url', 'max:500'],
+            'ai_ollama_base_url' => ['nullable', 'regex:/^https?:\/\/.+/i', 'max:500'],
             'ai_ollama_model' => ['nullable', 'string', 'max:255'],
             'byos_enabled' => ['nullable', 'boolean'],
-            'byos_base_url' => ['nullable', 'url', 'max:500'],
+            'byos_base_url' => ['nullable', 'regex:/^https?:\/\/.+/i', 'max:500'],
             'byos_model' => ['nullable', 'string', 'max:255'],
             'byos_auth_token' => ['nullable', 'string', 'max:1000'],
             'byos_max_thinking_tokens' => ['nullable', 'numeric', 'min:0'],
@@ -1572,7 +1572,7 @@ class AdminDashboardController extends Controller
         }
 
         if ($selectedProvider === 'ollama') {
-            $ollamaBaseUrl = trim((string) $request->input('ai_ollama_base_url', ''));
+            $ollamaBaseUrl = rtrim(trim((string) $request->input('ai_ollama_base_url', '')), '/');
             $ollamaModel = trim((string) $request->input('ai_ollama_model', ''));
 
             if ($ollamaBaseUrl !== '') {
@@ -1588,7 +1588,7 @@ class AdminDashboardController extends Controller
         AdminSetting::putValue('ai', 'byos_enabled', $byosEnabled ? 'true' : 'false', false);
 
         if ($byosEnabled) {
-            $baseUrl = trim((string) $request->input('byos_base_url', ''));
+            $baseUrl = rtrim(trim((string) $request->input('byos_base_url', '')), '/');
             $model = trim((string) $request->input('byos_model', ''));
             $authToken = trim((string) $request->input('byos_auth_token', ''));
             $maxThinkingTokens = $request->input('byos_max_thinking_tokens', '');

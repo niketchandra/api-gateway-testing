@@ -43,15 +43,41 @@ class AiAuditService
         }
 
         // Load BYOS settings
-        $this->byosBaseUrl = (string) AdminSetting::getValue('byos_base_url', '');
+        $byosBaseUrl = (string) AdminSetting::getValue('byos_base_url', '');
+        // Trim and remove trailing slashes for consistency
+            $this->byosBaseUrl = $this->normalizeUrl(rtrim(trim($byosBaseUrl), '/'));
         $this->byosModel = (string) AdminSetting::getValue('byos_model', '');
         $this->byosAuthToken = AdminSetting::getValue('byos_auth_token', null);
         $this->byosMaxThinkingTokens = (int) AdminSetting::getValue('byos_max_thinking_tokens', 0);
 
         // Load Ollama settings
-        $this->ollamaBaseUrl = (string) AdminSetting::getValue('ai_ollama_base_url', '');
+        $ollamaBaseUrl = (string) AdminSetting::getValue('ai_ollama_base_url', '');
+        // Trim and remove trailing slashes
+            $this->ollamaBaseUrl = $this->normalizeUrl(rtrim(trim($ollamaBaseUrl), '/'));
         $this->ollamaModel = (string) AdminSetting::getValue('ai_ollama_model', '');
     }
+
+        /**
+         * Normalize URLs for Docker environments
+         * Converts localhost to host.docker.internal for Docker containers
+         */
+        private function normalizeUrl(string $url): string
+        {
+            if (empty($url)) {
+                return $url;
+            }
+
+            // Inside Docker, localhost doesn't work - convert to host.docker.internal
+            // This works on Docker Desktop for Windows/Mac
+            if (strpos($url, 'http://localhost:') !== false) {
+                return str_replace('http://localhost:', 'http://host.docker.internal:', $url);
+            }
+            if (strpos($url, 'https://localhost:') !== false) {
+                return str_replace('https://localhost:', 'https://host.docker.internal:', $url);
+            }
+
+            return $url;
+        }
 
     /**
      * Check if AI settings are properly configured
@@ -185,7 +211,7 @@ class AiAuditService
         $systemPrompt = $this->buildAuditPrompt($configName);
 
         $payload = [
-            'model' => 'gpt-4-turbo',
+            'model' => 'gpt-4.1',
             'messages' => [
                 [
                     'role' => 'system',
@@ -207,6 +233,7 @@ class AiAuditService
             if (!$response->successful()) {
                 Log::warning('ChatGPT Audit Failed', [
                     'status' => $response->status(),
+                    'body' => $response->body(),
                 ]);
                 return null;
             }
@@ -376,6 +403,8 @@ class AiAuditService
             if (!$response->successful()) {
                 Log::warning('Ollama Audit Failed', [
                     'status' => $response->status(),
+                    'url' => $this->ollamaBaseUrl . '/api/chat',
+                    'body' => $response->body(),
                 ]);
                 return null;
             }
@@ -385,7 +414,11 @@ class AiAuditService
 
             return $this->parseAuditResponse($auditText);
         } catch (\Throwable $e) {
-            Log::error('Ollama Audit Exception: ' . $e->getMessage());
+            Log::error('Ollama Audit Exception: ' . $e->getMessage(), [
+                'url' => $this->ollamaBaseUrl . '/api/chat',
+                'model' => $this->ollamaModel,
+                'trace' => $e->getTraceAsString(),
+            ]);
             
             // Return demo/test audit results for development purposes
             return $this->getDemoAuditResults($configName, $configContent);
@@ -430,6 +463,13 @@ RECOMMENDATIONS:
 - Regular security audits and compliance checks
 - Document all configuration parameters and their purposes
 
+POTENTIAL FIXES / CONFIGURATION CHANGES:
+- Move secrets to environment variables or a secret manager
+- Replace hardcoded credentials with runtime configuration values
+- Enable stricter access controls for sensitive endpoints
+- Add validation for required fields and file paths
+- Reduce overly permissive defaults where possible
+
 Note: This is a demo analysis. Connect a real AI provider (Ollama, OpenAI, etc.) for comprehensive auditing.
 AUDIT;
 
@@ -437,6 +477,7 @@ AUDIT;
             'provider' => 'demo',
             'provider_type' => 'test',
             'audit_results' => $auditText,
+            'potential_fixes' => $this->extractSection($auditText, 'POTENTIAL FIXES / CONFIGURATION CHANGES') ?? $this->extractSection($auditText, 'RECOMMENDATIONS') ?? '',
             'issues_found' => $issues,
             'is_demo' => true,
         ];
@@ -482,6 +523,9 @@ Provide your audit in a clear, structured format with:
 - Severity levels
 - Recommended fixes
 - General feedback and improvements
+- Potential Fixes / Configuration Changes
+
+In the Potential Fixes / Configuration Changes section, show concrete config edits or operational changes the user can apply. Be specific about what can be modified, removed, or tightened in the configuration file.
 
 PROMPT . $fileInfo;
     }
@@ -497,8 +541,24 @@ PROMPT . $fileInfo;
             'provider' => $this->provider,
             'provider_type' => $this->providerType,
             'audit_results' => $auditText,
+            'potential_fixes' => $this->extractSection($auditText, 'POTENTIAL FIXES / CONFIGURATION CHANGES') ?? $this->extractSection($auditText, 'POTENTIAL FIXES') ?? $this->extractSection($auditText, 'RECOMMENDED FIXES') ?? '',
             'issues_found' => $this->countIssuesSeverity($auditText),
         ];
+    }
+
+    /**
+     * Extract a named section from the AI audit text.
+     */
+    private function extractSection(string $auditText, string $sectionName): ?string
+    {
+        $pattern = '/(?:^|\n)\s*(?:#{1,3}\s*)?' . preg_quote($sectionName, '/') . '\s*:?(?:\s*\n|\s*\n?)(.*?)(?=\n\s*(?:#{1,3}\s*)?[A-Z][A-Z\s\/\-]+:?(?:\s*\n|\s*$)|\z)/si';
+
+        if (!preg_match($pattern, $auditText, $matches)) {
+            return null;
+        }
+
+        $section = trim((string) ($matches[1] ?? ''));
+        return $section !== '' ? $section : null;
     }
 
     /**

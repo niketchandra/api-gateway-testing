@@ -627,14 +627,15 @@
 
             <div style="margin-bottom:14px;">
                 <label style="display:block; font-size:13px; color:#4b5563; margin-bottom:8px; font-weight:600;">Provider Login URLs</label>
-                <p style="font-size:12px; color:#6b7280; margin-bottom:10px;">Only selected providers are shown below. Configure URL and Client ID/Secret per provider. Tenant/Domain is optional and not required for GitHub.</p>
+                <p style="font-size:12px; color:#6b7280; margin-bottom:10px;">Only selected providers are shown below. For Authentik and generic OIDC, enter the issuer or OpenID configuration URL. Tenant/Domain is optional and not required for GitHub.</p>
                 <p style="font-size:12px; color:#374151; margin-bottom:10px;">Configure callback/redirect URL on your identity platform, not here. App callback format: <strong>{{ url('/auth/sso/{provider}/callback') }}</strong></p>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                     @foreach(($ssoProviderOptions ?? []) as $providerKey => $providerMeta)
+                        @php $isOidcProvider = in_array($providerKey, ['authentik', 'oidc'], true); @endphp
                         <div class="provider-url-group" data-provider="{{ $providerKey }}" style="display:{{ in_array($providerKey, $selectedProviders, true) ? 'block' : 'none' }};">
                             <div style="font-size:12px; color:#111827; margin-bottom:6px;">Callback URL for {{ $providerMeta['label'] ?? ucfirst($providerKey) }}: <strong>{{ url('/auth/sso/' . $providerKey . '/callback') }}</strong></div>
                             @if(!in_array($providerKey, ['azure-ad', 'microsoft'], true))
-                                <label style="display:block; font-size:12px; color:#4b5563; margin-bottom:5px;">{{ $providerMeta['label'] ?? ucfirst($providerKey) }} URL</label>
+                                <label style="display:block; font-size:12px; color:#4b5563; margin-bottom:5px;">{{ $isOidcProvider ? 'Issuer / OpenID Configuration URL' : ($providerMeta['label'] ?? ucfirst($providerKey)) . ' URL' }}</label>
                                 <input
                                     class="provider-config-input"
                                     type="url"

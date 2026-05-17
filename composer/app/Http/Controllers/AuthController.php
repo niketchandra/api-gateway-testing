@@ -57,6 +57,8 @@ class AuthController extends Controller
             $providerUrl = $this->buildGithubAuthorizeUrl($providerUrl, $request);
         } elseif (in_array($provider, ['azure-ad', 'microsoft'], true)) {
             $providerUrl = $this->buildAzureAdAuthorizeUrl($providerUrl, $provider, $request);
+        } elseif (in_array($provider, ['authentik', 'oidc'], true)) {
+            $providerUrl = $this->buildOidcAuthorizeUrl($provider, $request);
         }
 
         if ($intent === 'pin_reset') {
@@ -81,7 +83,7 @@ class AuthController extends Controller
             'has_error' => $request->filled('error'),
         ]);
 
-        if (!in_array($provider, ['github', 'azure-ad', 'microsoft'], true)) {
+        if (!in_array($provider, ['github', 'azure-ad', 'microsoft', 'authentik', 'oidc'], true)) {
             Log::warning('SSO_UnsupportedProvider', ['provider' => $provider]);
             return redirect()->route('home')->withErrors([
                 'login' => 'Callback for this SSO provider is not implemented yet.',
@@ -101,6 +103,10 @@ class AuthController extends Controller
 
         if (in_array($provider, ['azure-ad', 'microsoft'], true)) {
             return $this->handleAzureAdCallback($request, $provider, $intent);
+        }
+
+        if (in_array($provider, ['authentik', 'oidc'], true)) {
+            return $this->handleOidcCallback($request, $provider, $intent);
         }
 
         return $this->handleGithubCallback($request, $intent);
@@ -569,6 +575,136 @@ class AuthController extends Controller
         return $baseUrl . '?' . http_build_query($query);
     }
 
+    private function buildOidcAuthorizeUrl(string $provider, Request $request): string
+    {
+        [$clientId] = $this->getProviderClientCredentials($provider);
+        $providerUrl = $this->resolveSsoProviderUrl($provider);
+        $discoveryDocument = $this->resolveOidcDiscoveryDocument($provider);
+        $authorizationEndpoint = $this->normalizeBrowserFacingUrl(
+            trim((string) ($discoveryDocument['authorization_endpoint'] ?? '')),
+            $providerUrl
+        );
+
+        if ($clientId === '' || $authorizationEndpoint === '') {
+            return $providerUrl;
+        }
+
+        $state = Str::random(40);
+        $request->session()->put($this->ssoStateSessionKey($provider), $state);
+
+        $callbackUrl = route('auth.sso.callback', ['provider' => $provider]);
+
+        $query = [
+            'client_id' => $clientId,
+            'redirect_uri' => $callbackUrl,
+            'response_type' => 'code',
+            'scope' => 'openid profile email',
+            'state' => $state,
+        ];
+
+        return $authorizationEndpoint . '?' . http_build_query($query);
+    }
+
+    private function handleOidcCallback(Request $request, string $provider, string $intent)
+    {
+        $code = (string) $request->input('code', $request->query('code', ''));
+        if ($code === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => 'Missing authorization code from ' . ucfirst($provider) . ' callback.',
+            ]);
+        }
+
+        $expectedState = (string) $request->session()->pull($this->ssoStateSessionKey($provider), '');
+        $returnedState = (string) $request->input('state', $request->query('state', ''));
+        if ($expectedState !== '' && $returnedState !== '' && !hash_equals($expectedState, $returnedState)) {
+            return redirect()->route('home')->withErrors([
+                'login' => 'Invalid OAuth state received from ' . ucfirst($provider) . '.',
+            ]);
+        }
+
+        [$clientId, $clientSecret] = $this->getProviderClientCredentials($provider);
+
+        if ($clientId === '' || $clientSecret === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' SSO is not fully configured. Set Client ID and Client Secret in admin settings.',
+            ]);
+        }
+
+        $discoveryDocument = $this->resolveOidcDiscoveryDocument($provider);
+        $tokenEndpoint = $this->resolveContainerAccessibleUrl(trim((string) ($discoveryDocument['token_endpoint'] ?? '')));
+        $userinfoEndpoint = $this->resolveContainerAccessibleUrl(trim((string) ($discoveryDocument['userinfo_endpoint'] ?? '')));
+
+        if ($tokenEndpoint === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' discovery document did not provide a token endpoint.',
+            ]);
+        }
+
+        $callbackUrl = route('auth.sso.callback', ['provider' => $provider]);
+
+        $tokenResponse = Http::asForm()
+            ->acceptJson()
+            ->timeout(15)
+            ->post($tokenEndpoint, [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'code' => $code,
+                'redirect_uri' => $callbackUrl,
+                'grant_type' => 'authorization_code',
+            ]);
+
+        if (!$tokenResponse->ok()) {
+            return redirect()->route('home')->withErrors([
+                'login' => 'Failed to get access token from ' . ucfirst($provider) . '.',
+            ]);
+        }
+
+        $accessToken = (string) $tokenResponse->json('access_token', '');
+        $idToken = (string) $tokenResponse->json('id_token', '');
+
+        if ($accessToken === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' did not return an access token.',
+            ]);
+        }
+
+        $oidcUser = [];
+        if ($userinfoEndpoint !== '') {
+            $userinfoResponse = Http::withToken($accessToken)
+                ->acceptJson()
+                ->timeout(15)
+                ->get($userinfoEndpoint);
+
+            if ($userinfoResponse->ok()) {
+                $userinfoPayload = $userinfoResponse->json();
+                if (is_array($userinfoPayload)) {
+                    $oidcUser = $userinfoPayload;
+                }
+            }
+        }
+
+        if (empty($oidcUser) && $idToken !== '') {
+            $oidcUser = $this->decodeJwtPayload($idToken);
+        }
+
+        $email = trim((string) ($oidcUser['email'] ?? $oidcUser['preferred_username'] ?? $oidcUser['upn'] ?? $oidcUser['username'] ?? ''));
+        $displayName = trim((string) ($oidcUser['name'] ?? ''));
+        if ($displayName === '') {
+            $displayName = trim((string) (($oidcUser['given_name'] ?? '') . ' ' . ($oidcUser['family_name'] ?? '')));
+        }
+        if ($displayName === '') {
+            $displayName = trim((string) ($oidcUser['preferred_username'] ?? 'OIDC User'));
+        }
+
+        if ($email === '') {
+            return redirect()->route('home')->withErrors([
+                'login' => ucfirst($provider) . ' account email is required to sign in.',
+            ]);
+        }
+
+        return $this->processOrCreateSsoUser($email, $displayName, $provider, $intent);
+    }
+
     private function getProviderClientCredentials(string $provider): array
     {
         $provider = strtolower(trim($provider));
@@ -642,6 +778,137 @@ class AuthController extends Controller
         } catch (\Throwable) {
             return '';
         }
+    }
+
+    private function resolveOidcDiscoveryDocument(string $provider): array
+    {
+        $providerUrl = $this->resolveSsoProviderUrl($provider);
+        if ($providerUrl === '') {
+            return [];
+        }
+
+        $discoveryUrl = $this->normalizeOidcDiscoveryUrl($providerUrl);
+        if ($discoveryUrl === '') {
+            return [];
+        }
+
+        foreach ($this->candidateContainerUrls($discoveryUrl) as $candidateUrl) {
+            try {
+                $response = Http::acceptJson()
+                    ->timeout(15)
+                    ->get($candidateUrl);
+
+                if (!$response->ok()) {
+                    continue;
+                }
+
+                $document = $response->json();
+                if (is_array($document)) {
+                    return $document;
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return [];
+    }
+
+    private function normalizeOidcDiscoveryUrl(string $providerUrl): string
+    {
+        $providerUrl = trim($providerUrl);
+        if ($providerUrl === '') {
+            return '';
+        }
+
+        if (str_contains($providerUrl, '/.well-known/openid-configuration')) {
+            return $providerUrl;
+        }
+
+        return rtrim($providerUrl, '/') . '/.well-known/openid-configuration';
+    }
+
+    private function decodeJwtPayload(string $jwt): array
+    {
+        $parts = explode('.', $jwt);
+        if (count($parts) < 2) {
+            return [];
+        }
+
+        $payload = $parts[1];
+        $payload .= str_repeat('=', (4 - (strlen($payload) % 4)) % 4);
+        $decoded = base64_decode(strtr($payload, '-_', '+/'), true);
+        if ($decoded === false) {
+            return [];
+        }
+
+        $claims = json_decode($decoded, true);
+        return is_array($claims) ? $claims : [];
+    }
+
+    private function candidateContainerUrls(string $url): array
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return [];
+        }
+
+        $candidates = [$url];
+
+        if (str_contains($url, '://localhost:')) {
+            $candidates[] = str_replace('://localhost:', '://host.docker.internal:', $url);
+        }
+
+        if (str_contains($url, '://127.0.0.1:')) {
+            $candidates[] = str_replace('://127.0.0.1:', '://host.docker.internal:', $url);
+        }
+
+        return array_values(array_unique($candidates));
+    }
+
+    private function resolveContainerAccessibleUrl(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+
+        if (str_contains($url, '://localhost:')) {
+            return str_replace('://localhost:', '://host.docker.internal:', $url);
+        }
+
+        if (str_contains($url, '://127.0.0.1:')) {
+            return str_replace('://127.0.0.1:', '://host.docker.internal:', $url);
+        }
+
+        return $url;
+    }
+
+    private function normalizeBrowserFacingUrl(string $url, string $providerUrl): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+
+        $providerHost = parse_url($providerUrl, PHP_URL_HOST);
+        $providerScheme = parse_url($providerUrl, PHP_URL_SCHEME) ?: 'http';
+        $providerPort = parse_url($providerUrl, PHP_URL_PORT);
+
+        if (in_array($providerHost, ['localhost', '127.0.0.1'], true)) {
+            $url = str_replace('://host.docker.internal', '://' . $providerHost, $url);
+        }
+
+        if ($providerPort !== null && preg_match('/^https?:\/\/[^\/]+/', $url) === 1) {
+            $url = preg_replace('/^https?:\/\/[^\/]+/', $providerScheme . '://' . $providerHost . ':' . $providerPort, $url, 1);
+        }
+
+        return $url;
+    }
+
+    private function ssoStateSessionKey(string $provider): string
+    {
+        return 'sso_state_oidc_' . str_replace('-', '_', strtolower(trim($provider)));
     }
 
     private function resolveSsoProviderUrl(string $provider): string

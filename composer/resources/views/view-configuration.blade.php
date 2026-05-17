@@ -214,10 +214,27 @@
                     'Accept': 'application/json'
                 }
             })
-            .then(response => {
+            .then(async response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    let errorMessage = `HTTP error! status: ${response.status}`;
+
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (jsonError) {
+                        try {
+                            const errorText = await response.text();
+                            if (errorText) {
+                                errorMessage = errorText;
+                            }
+                        } catch (textError) {
+                            // Keep the status-based message above.
+                        }
+                    }
+
+                    throw new Error(errorMessage);
                 }
+
                 return response.json();
             })
             .then(data => {
@@ -268,6 +285,14 @@
                         html += `<div class="audit-section">
                             <div class="audit-section-title">Suggested Additional Hardening</div>
                             <div class="audit-section-content">${escapeHtml(analysis.hardening_suggestions)}</div>
+                        </div>`;
+                    }
+
+                    // Potential Fixes / Configuration Changes
+                    if (analysis.potential_fixes) {
+                        html += `<div class="audit-section">
+                            <div class="audit-section-title">Potential Fixes / Configuration Changes</div>
+                            <div class="audit-section-content">${escapeHtml(analysis.potential_fixes)}</div>
                         </div>`;
                     }
                     

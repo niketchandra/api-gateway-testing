@@ -551,6 +551,17 @@ Supported provider catalog in config:
 
 - azure-ad, microsoft, github, gitlab, okta, auth0, oidc, authentik, google
 
+### 16.1 Azure AD / Microsoft URL Construction
+
+For Azure AD and Microsoft providers, the authorization URL is automatically constructed from the tenant ID if no explicit URL is provided:
+
+- Format: `https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize`
+- **Required**: `SSO_AZURE_AD_TENANT_ID` or `SSO_MICROSOFT_TENANT_ID`
+- Optional: `SSO_AZURE_AD_URL` or `SSO_MICROSOFT_URL` (can be omitted for standard Azure endpoints)
+- This reduces configuration overhead and eliminates URL construction errors
+
+### 16.2 Other callback details
+
 Current callback implementation in code:
 
 - GitHub OAuth callback fully handled
@@ -638,3 +649,26 @@ Primary implementation files:
 - `composer/.env.example`
 
 This document should be updated whenever routes, role rules, storage strategy, SSO providers, Kong routes, or queue behavior changes.
+
+
+# Caveman Mode
+
+Be concise.
+No fluff.
+Technical accuracy important.
+Commands/configs first.
+Short debugging responses.
+
+For troubleshooting:
+- root cause
+- fix
+- verification
+
+Avoid long introductions.
+
+Use caveman style.
+
+Short technical responses.
+No filler.
+Commands first.
+Root cause + fix + verification.

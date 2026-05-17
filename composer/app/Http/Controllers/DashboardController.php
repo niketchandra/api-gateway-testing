@@ -810,6 +810,7 @@ class DashboardController extends Controller
                     'risk_areas' => substr($auditText, 0, 500), // First 500 chars as summary
                     'security_status' => $auditText,
                     'hardening_suggestions' => 'Review the audit results above and implement recommended security hardening.',
+                    'potential_fixes' => $auditResult['potential_fixes'] ?? '',
                     'hardened_override' => ''
                 ],
                 'risk_level' => 'medium',
