@@ -135,6 +135,9 @@
             <!-- Modal Footer -->
             <div style="padding: 16px 24px; background: #f7fafc; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 12px;">
                 <button onclick="closeAuditModal()" style="padding: 10px 20px; border-radius: 8px; background: #e5e7eb; color: #333; border: none; cursor: pointer; font-size: 14px; font-weight: 500;">Close</button>
+                <button onclick="reAuditConfiguration()" id="re-audit-btn" style="padding: 10px 20px; border-radius: 8px; background: #111827; color: white; border: none; cursor: pointer; font-size: 14px; font-weight: 500; display: none; align-items: center; gap: 8px;">
+                    <i class="fas fa-rotate-right"></i> Re-Audit
+                </button>
                 <button onclick="exportAuditResults()" style="padding: 10px 20px; border-radius: 8px; background: #38bdf8; color: white; border: none; cursor: pointer; font-size: 14px; font-weight: 500; display: none;" id="export-btn">
                     <i class="fas fa-download"></i> Export
                 </button>
@@ -191,21 +194,28 @@
 
     <!-- JavaScript Functions -->
     <script>
+        let currentAuditConfigId = null;
+
         function auditConfiguration(configId) {
+            currentAuditConfigId = configId;
+
             const btn = document.getElementById('audit-btn');
             const btnText = document.getElementById('audit-btn-text');
             const modal = document.getElementById('audit-modal');
             const loading = document.getElementById('audit-loading');
             const results = document.getElementById('audit-results');
+            const reAuditBtn = document.getElementById('re-audit-btn');
+            const exportBtn = document.getElementById('export-btn');
 
-            // Show modal and loading state
             modal.style.display = 'flex';
             loading.style.display = 'block';
             results.style.display = 'none';
+            document.getElementById('audit-content').innerHTML = '';
+            exportBtn.style.display = 'none';
+            reAuditBtn.style.display = 'none';
             btn.disabled = true;
             btnText.textContent = 'Analyzing...';
 
-            // Send audit request
             fetch(`/configuration-backups/${configId}/audit`, {
                 method: 'POST',
                 headers: {
@@ -238,32 +248,28 @@
                 return response.json();
             })
             .then(data => {
-                // Hide loading, show results
                 loading.style.display = 'none';
                 results.style.display = 'block';
-                
+
                 let html = '';
-                
+
                 if (data.success && data.data) {
                     const analysis = data.data;
-                    
-                    // About the Service
+
                     if (analysis.service_info) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">About the Service</div>
                             <div class="audit-section-content">${escapeHtml(analysis.service_info)}</div>
                         </div>`;
                     }
-                    
-                    // About the Configuration
+
                     if (analysis.config_details) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">About the Configuration</div>
                             <div class="audit-section-content">${escapeHtml(analysis.config_details)}</div>
                         </div>`;
                     }
-                    
-                    // Potential Risk Areas
+
                     if (analysis.risk_areas) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">Potential Risk Areas</div>
@@ -271,16 +277,14 @@
                             ${data.risk_level ? `<span class="risk-badge risk-${data.risk_level}">${data.risk_level.toUpperCase()} RISK</span>` : ''}
                         </div>`;
                     }
-                    
-                    // Current Security Status
+
                     if (analysis.security_status) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">Current Security Status</div>
                             <div class="audit-section-content">${escapeHtml(analysis.security_status)}</div>
                         </div>`;
                     }
-                    
-                    // Suggested Additional Hardening
+
                     if (analysis.hardening_suggestions) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">Suggested Additional Hardening</div>
@@ -288,15 +292,13 @@
                         </div>`;
                     }
 
-                    // Potential Fixes / Configuration Changes
                     if (analysis.potential_fixes) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">Potential Fixes / Configuration Changes</div>
                             <div class="audit-section-content">${escapeHtml(analysis.potential_fixes)}</div>
                         </div>`;
                     }
-                    
-                    // Recommended Hardened Override
+
                     if (analysis.hardened_override) {
                         html += `<div class="audit-section">
                             <div class="audit-section-title">Recommended Hardened Override</div>
@@ -309,15 +311,17 @@
                         <div class="audit-section-content">${escapeHtml(data.message || 'Failed to analyze configuration. Please try again.')}</div>
                     </div>`;
                 }
-                
+
                 document.getElementById('audit-content').innerHTML = html;
-                document.getElementById('export-btn').style.display = 'inline-block';
+                exportBtn.style.display = 'inline-block';
+                reAuditBtn.style.display = 'inline-flex';
                 btn.disabled = false;
                 btnText.textContent = 'Audit Configuration';
             })
             .catch(error => {
                 loading.style.display = 'none';
                 results.style.display = 'block';
+                reAuditBtn.style.display = 'inline-flex';
                 document.getElementById('audit-content').innerHTML = `<div class="audit-section" style="background: #fee2e2; border-left-color: #dc2626;">
                     <div class="audit-section-title" style="color: #dc2626;">Error</div>
                     <div class="audit-section-content">${escapeHtml('An error occurred: ' + error.message)}</div>
@@ -325,6 +329,12 @@
                 btn.disabled = false;
                 btnText.textContent = 'Audit Configuration';
             });
+        }
+
+        function reAuditConfiguration() {
+            if (currentAuditConfigId) {
+                auditConfiguration(currentAuditConfigId);
+            }
         }
 
         function closeAuditModal() {
@@ -348,7 +358,6 @@
             return div.innerHTML;
         }
 
-        // Close modal when clicking outside
         document.getElementById('audit-modal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAuditModal();
